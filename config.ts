@@ -2,15 +2,15 @@
 // Bu dosya uygulamanın genel yapılandırma ayarlarını içerir.
 
 export const CONFIG = {
-    // Backend API Adresi (Sunucunuzun adresi)
-    API_BASE_URL: 'http://localhost:5000/api',
+    // Vercel üzerinde '/api' relative path kullanılır.
+    // Localhost'ta geliştirme yaparken 'http://localhost:5000/api' kullanılır.
+    API_BASE_URL: import.meta.env.PROD ? '/api' : 'http://localhost:5000/api',
     
-    // Admin yetkisine sahip Telegram ID'leri (Frontend tarafında ön kontrol için)
-    // Asıl yetkilendirme Backend tarafında yapılmalıdır.
+    // Admin yetkisine sahip Telegram ID'leri
     ADMIN_IDS: [8426134237],
     
     // Versiyon
-    VERSION: '3.0.0-Live'
+    VERSION: '3.1.0-Vercel'
 };
 
 export const isUserAdmin = (telegramId?: number): boolean => {

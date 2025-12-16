@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Mail, Phone, Save, Trash2, Smartphone, RefreshCw, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { ChevronLeft, Mail, Phone, Save, Trash2, Smartphone, RefreshCw, ShieldCheck, BadgeCheck, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTelegram } from '../hooks/useTelegram';
 
@@ -164,10 +165,19 @@ const AccountSettings = () => {
       </div>
 
       {/* Danger Zone */}
-      <div className="mt-12 pt-8 border-t border-slate-900">
+      <div className="mt-12 pt-8 border-t border-slate-900 space-y-4">
           <button className="w-full py-3 border border-red-500/20 text-red-500 rounded-xl hover:bg-red-500/10 transition-colors text-sm font-bold flex items-center justify-center gap-2 opacity-60 hover:opacity-100">
               <Trash2 size={16} />
               <span>Uygulama Verilerini Temizle</span>
+          </button>
+
+          {/* Admin Shortcut */}
+          <button 
+              onClick={() => navigate('/admin/login')}
+              className="w-full py-3 border border-slate-800 text-slate-500 rounded-xl hover:bg-slate-900 transition-colors text-sm font-bold flex items-center justify-center gap-2 hover:text-white"
+          >
+              <LayoutDashboard size={16} />
+              <span>Yönetici Paneli (Demo)</span>
           </button>
       </div>
     </div>

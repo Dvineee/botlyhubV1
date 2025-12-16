@@ -1,15 +1,36 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lock, User, Loader2 } from 'lucide-react';
+import { ShieldCheck, Lock, User, Loader2, Smartphone } from 'lucide-react';
 import { AuthService } from '../../services/AuthService';
+import { useTelegram } from '../../hooks/useTelegram';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const { user } = useTelegram();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAutoChecking, setIsAutoChecking] = useState(true);
+
+  // Sayfa yüklendiğinde otomatik Telegram ID kontrolü yap
+  useEffect(() => {
+    const checkTelegramAuth = async () => {
+        if (user) {
+            const success = await AuthService.loginWithTelegram();
+            if (success) {
+                navigate('/admin/dashboard');
+            } else {
+                setIsAutoChecking(false); // Admin değilse login formunu göster
+            }
+        } else {
+            setIsAutoChecking(false);
+        }
+    };
+    
+    checkTelegramAuth();
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +51,15 @@ const AdminLogin = () => {
     }
   };
 
+  if (isAutoChecking) {
+      return (
+          <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+              <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+              <p className="text-slate-400 text-sm animate-pulse">Telegram Kimliği Doğrulanıyor...</p>
+          </div>
+      );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95">
@@ -40,6 +70,17 @@ const AdminLogin = () => {
                 <h1 className="text-2xl font-bold text-white">Yönetici Girişi</h1>
                 <p className="text-slate-500 text-sm mt-1">BotlyHub Secure Panel</p>
             </div>
+
+            {/* Telegram User Info (If detected but not admin) */}
+            {user && (
+                 <div className="mb-6 bg-slate-950/50 p-3 rounded-xl border border-red-900/30 flex items-center gap-3">
+                     <div className="p-2 bg-slate-900 rounded-full"><Smartphone size={16} className="text-slate-500" /></div>
+                     <div>
+                         <p className="text-xs text-slate-400">Algılanan ID: <span className="text-slate-200 font-mono">{user.id}</span></p>
+                         <p className="text-[10px] text-red-400">Bu hesap Admin yetkisine sahip değil.</p>
+                     </div>
+                 </div>
+            )}
 
             <form onSubmit={handleLogin} className="space-y-4">
                 <div>

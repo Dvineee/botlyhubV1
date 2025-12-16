@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, TrendingUp, BarChart3, ChevronRight, LayoutGrid, Store, User, Bot as BotIcon, Megaphone, DollarSign, X } from 'lucide-react';
+import { Search, Sparkles, TrendingUp, BarChart3, ChevronRight, LayoutGrid, Store, User, Bot as BotIcon, Megaphone, DollarSign, X, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ExtendedBot } from '../types';
 import { categories } from '../data';
 import { useTranslation } from '../TranslationContext';
 import { MarketplaceService } from '../services/MarketplaceService';
+import { useTelegram } from '../hooks/useTelegram';
+import { isUserAdmin } from '../config';
 
 // Helper component for rendering a single bot card
 const BotCard: React.FC<{ bot: ExtendedBot }> = ({ bot }) => {
@@ -48,6 +50,7 @@ const BotCard: React.FC<{ bot: ExtendedBot }> = ({ bot }) => {
 const Home = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useTelegram();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // Data State
@@ -145,6 +148,20 @@ const Home = () => {
 
   const renderDashboard = () => (
       <div className="animate-in fade-in duration-300">
+        
+        {/* Admin Shortcut (Visible ONLY if ID matches config) */}
+        {isUserAdmin(user?.id) && (
+            <div className="mb-4">
+                <button 
+                    onClick={() => navigate('/admin/login')}
+                    className="w-full bg-slate-900 border border-blue-500/30 text-blue-400 p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold shadow-lg hover:bg-slate-800 transition-colors"
+                >
+                    <ShieldCheck size={18} />
+                    Yönetici Paneline Git
+                </button>
+            </div>
+        )}
+
         {/* Feature Slider (Promo Cards) */}
         <div className="mb-6">
              <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x snap-mandatory">

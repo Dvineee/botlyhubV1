@@ -13,8 +13,15 @@ export class MarketplaceService {
             return JSON.parse(stored);
         }
         // İlk açılışta mock veriyi kaydet
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(mockBots));
-        return mockBots;
+        // Mock veriye varsayılan status ve screenshots ekleyelim (eğer yoksa)
+        const enrichedMockBots = mockBots.map(b => ({
+            ...b,
+            status: b.status || 'active',
+            screenshots: b.screenshots || []
+        })) as ExtendedBot[];
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(enrichedMockBots));
+        return enrichedMockBots;
     }
 
     // Tek bir bot getir
@@ -29,6 +36,8 @@ export class MarketplaceService {
         
         const newBot: ExtendedBot = {
             id: Math.random().toString(36).substr(2, 9),
+            status: 'active', // Varsayılan aktif
+            screenshots: [], // Varsayılan boş
             ...botData,
             isNew: true // Yeni eklenenler "Yeni" etiketi alır
         };
@@ -36,6 +45,20 @@ export class MarketplaceService {
         const updatedBots = [newBot, ...bots];
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedBots));
         return newBot;
+    }
+
+    // Bot Güncelle
+    static updateBot(id: string, updates: Partial<ExtendedBot>): ExtendedBot | null {
+        const bots = this.getAllBots();
+        const index = bots.findIndex(b => b.id === id);
+        
+        if (index === -1) return null;
+
+        const updatedBot = { ...bots[index], ...updates };
+        bots[index] = updatedBot;
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(bots));
+        return updatedBot;
     }
 
     // Bot sil

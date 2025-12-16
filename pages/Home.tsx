@@ -60,7 +60,10 @@ const Home = () => {
 
   useEffect(() => {
     // Load bots from service (LocalStorage)
-    setMarketplaceBots(MarketplaceService.getAllBots());
+    // ONLY Show active bots to regular users
+    const allBots = MarketplaceService.getAllBots();
+    const activeBots = allBots.filter(b => (b.status || 'active') === 'active');
+    setMarketplaceBots(activeBots);
   }, []);
 
   // Search is active if text exists OR overlay is explicitly opened (e.g. by category click)

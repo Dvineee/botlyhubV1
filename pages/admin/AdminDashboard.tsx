@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot, Info, Plus, X, Save, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot, Info, Plus, X, Save, Image as ImageIcon, Edit, CheckCircle, Ban } from 'lucide-react';
 import { Logger } from '../../services/Logger';
 import { MarketplaceService } from '../../services/MarketplaceService';
 import { SystemLog, AppStats, UserBot, Channel, ExtendedBot } from '../../types';
@@ -20,14 +20,18 @@ const AdminDashboard = () => {
   
   // Bot Management State
   const [marketplaceBots, setMarketplaceBots] = useState<ExtendedBot[]>([]);
-  const [showAddBotModal, setShowAddBotModal] = useState(false);
-  const [newBotForm, setNewBotForm] = useState({
+  const [showBotModal, setShowBotModal] = useState(false);
+  const [editingBotId, setEditingBotId] = useState<string | null>(null);
+  
+  const [botForm, setBotForm] = useState({
       name: '',
       description: '',
       price: '',
       category: 'productivity',
       icon: '',
-      isPremium: false
+      isPremium: false,
+      status: 'active' as 'active' | 'passive',
+      screenshots: '' // Comma separated URLs for simplicity
   });
 
   useEffect(() => {
@@ -85,6 +89,29 @@ const AdminDashboard = () => {
   };
 
   // Bot Management Functions
+  const openAddModal = () => {
+      setEditingBotId(null);
+      setBotForm({
+          name: '', description: '', price: '', category: 'productivity', icon: '', isPremium: false, status: 'active', screenshots: ''
+      });
+      setShowBotModal(true);
+  };
+
+  const openEditModal = (bot: ExtendedBot) => {
+      setEditingBotId(bot.id);
+      setBotForm({
+          name: bot.name,
+          description: bot.description,
+          price: bot.price.toString(),
+          category: bot.category,
+          icon: bot.icon,
+          isPremium: !!bot.isPremium,
+          status: bot.status || 'active',
+          screenshots: bot.screenshots ? bot.screenshots.join('\n') : ''
+      });
+      setShowBotModal(true);
+  };
+
   const handleDeleteBot = (id: string) => {
       if(window.confirm('Bu botu marketten silmek istediğinize emin misiniz?')) {
           MarketplaceService.deleteBot(id);
@@ -93,25 +120,54 @@ const AdminDashboard = () => {
       }
   };
 
-  const handleAddBot = (e: React.FormEvent) => {
+  const handleToggleStatus = (bot: ExtendedBot) => {
+      const newStatus = bot.status === 'active' ? 'passive' : 'active';
+      MarketplaceService.updateBot(bot.id, { status: newStatus });
+      setMarketplaceBots(MarketplaceService.getAllBots());
+      Logger.log('USER_ACTION', `Bot durumu değiştirildi: ${bot.name} -> ${newStatus}`);
+  };
+
+  const handleSaveBot = (e: React.FormEvent) => {
       e.preventDefault();
       
-      const iconUrl = newBotForm.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(newBotForm.name)}&background=random&size=200`;
+      const iconUrl = botForm.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(botForm.name)}&background=random&size=200`;
+      
+      // Parse screenshots (split by newline or comma)
+      const screenshotList = botForm.screenshots
+        .split(/[\n,]+/)
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
 
-      MarketplaceService.addBot({
-          name: newBotForm.name,
-          description: newBotForm.description,
-          price: parseFloat(newBotForm.price) || 0,
-          category: newBotForm.category,
-          icon: iconUrl,
-          isPremium: newBotForm.isPremium
-      });
+      if (editingBotId) {
+          // Update
+          MarketplaceService.updateBot(editingBotId, {
+              name: botForm.name,
+              description: botForm.description,
+              price: parseFloat(botForm.price) || 0,
+              category: botForm.category,
+              icon: iconUrl,
+              isPremium: botForm.isPremium,
+              status: botForm.status,
+              screenshots: screenshotList
+          });
+          Logger.log('USER_ACTION', `Bot güncellendi: ${botForm.name}`);
+      } else {
+          // Add
+          MarketplaceService.addBot({
+              name: botForm.name,
+              description: botForm.description,
+              price: parseFloat(botForm.price) || 0,
+              category: botForm.category,
+              icon: iconUrl,
+              isPremium: botForm.isPremium,
+              status: botForm.status,
+              screenshots: screenshotList
+          });
+          Logger.log('USER_ACTION', `Yeni bot eklendi: ${botForm.name}`);
+      }
 
       setMarketplaceBots(MarketplaceService.getAllBots());
-      setShowAddBotModal(false);
-      setNewBotForm({ name: '', description: '', price: '', category: 'productivity', icon: '', isPremium: false });
-      Logger.log('USER_ACTION', `Yeni bot eklendi: ${newBotForm.name}`);
-      alert('Bot başarıyla markete eklendi.');
+      setShowBotModal(false);
   };
 
   // Mock Graph Data
@@ -280,7 +336,7 @@ const AdminDashboard = () => {
                 <div className="animate-in fade-in">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-2xl font-bold">Bot Yönetimi</h2>
-                        <button onClick={() => setShowAddBotModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
+                        <button onClick={openAddModal} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
                             <Plus size={18} /> Yeni Bot Ekle
                         </button>
                     </div>
@@ -292,6 +348,7 @@ const AdminDashboard = () => {
                                     <th className="p-4 font-semibold">Bot</th>
                                     <th className="p-4 font-semibold">Kategori</th>
                                     <th className="p-4 font-semibold">Fiyat</th>
+                                    <th className="p-4 font-semibold">Durum</th>
                                     <th className="p-4 font-semibold text-right">İşlem</th>
                                 </tr>
                             </thead>
@@ -316,14 +373,36 @@ const AdminDashboard = () => {
                                         <td className="p-4 font-mono">
                                             {bot.price === 0 ? <span className="text-emerald-400 font-bold">Ücretsiz</span> : `₺${bot.price}`}
                                         </td>
-                                        <td className="p-4 text-right">
+                                        <td className="p-4">
                                             <button 
-                                                onClick={() => handleDeleteBot(bot.id)}
-                                                className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                title="Botu Sil"
+                                                onClick={() => handleToggleStatus(bot)}
+                                                className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
+                                                    (bot.status || 'active') === 'active' 
+                                                    ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' 
+                                                    : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                                                }`}
                                             >
-                                                <Trash2 size={18} />
+                                                {(bot.status || 'active') === 'active' ? <CheckCircle size={14} /> : <Ban size={14} />}
+                                                <span className="capitalize">{(bot.status || 'active')}</span>
                                             </button>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => openEditModal(bot)}
+                                                    className="p-2 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                                    title="Düzenle"
+                                                >
+                                                    <Edit size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeleteBot(bot.id)}
+                                                    className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                    title="Sil"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -387,7 +466,6 @@ const AdminDashboard = () => {
                  <div className="animate-in fade-in">
                     <h2 className="text-2xl font-bold mb-6">Kullanıcı Verileri (Local Storage)</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Mevcut User Tab İçeriği Aynen Kalacak */}
                          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                             <h3 className="font-bold mb-4 flex items-center gap-2">
                                 <Bot size={20} className="text-blue-500" />
@@ -435,56 +513,34 @@ const AdminDashboard = () => {
             )}
         </div>
 
-        {/* Add Bot Modal */}
-        {showAddBotModal && (
+        {/* Add/Edit Bot Modal */}
+        {showBotModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddBotModal(false)}></div>
-                <div className="bg-slate-900 w-full max-w-md rounded-2xl border border-slate-800 p-6 relative z-10 animate-in zoom-in-95 shadow-2xl">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowBotModal(false)}></div>
+                <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-800 p-6 relative z-10 animate-in zoom-in-95 shadow-2xl max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-white">Yeni Bot Ekle</h3>
-                        <button onClick={() => setShowAddBotModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                        <h3 className="text-xl font-bold text-white">{editingBotId ? 'Botu Düzenle' : 'Yeni Bot Ekle'}</h3>
+                        <button onClick={() => setShowBotModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
                     </div>
                     
-                    <form onSubmit={handleAddBot} className="space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 block mb-1">Bot Adı</label>
-                            <input 
-                                type="text"
-                                required
-                                value={newBotForm.name}
-                                onChange={e => setNewBotForm({...newBotForm, name: e.target.value})}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                                placeholder="Örn: Super Moderator"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 block mb-1">Açıklama</label>
-                            <textarea 
-                                required
-                                value={newBotForm.description}
-                                onChange={e => setNewBotForm({...newBotForm, description: e.target.value})}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none"
-                                placeholder="Botun özellikleri hakkında kısa bilgi..."
-                            />
-                        </div>
+                    <form onSubmit={handleSaveBot} className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 block mb-1">Fiyat (₺)</label>
+                             <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Bot Adı</label>
                                 <input 
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={newBotForm.price}
-                                    onChange={e => setNewBotForm({...newBotForm, price: e.target.value})}
+                                    type="text"
+                                    required
+                                    value={botForm.name}
+                                    onChange={e => setBotForm({...botForm, name: e.target.value})}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                                    placeholder="0"
+                                    placeholder="Örn: Super Bot"
                                 />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-400 block mb-1">Kategori</label>
                                 <select 
-                                    value={newBotForm.category}
-                                    onChange={e => setNewBotForm({...newBotForm, category: e.target.value})}
+                                    value={botForm.category}
+                                    onChange={e => setBotForm({...botForm, category: e.target.value})}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
                                 >
                                     {categories.filter(c => c.id !== 'all').map(c => (
@@ -493,28 +549,78 @@ const AdminDashboard = () => {
                                 </select>
                             </div>
                         </div>
+                        
                         <div>
-                            <label className="text-xs font-bold text-slate-400 block mb-1">İkon URL (Opsiyonel)</label>
+                            <label className="text-xs font-bold text-slate-400 block mb-1">Açıklama</label>
+                            <textarea 
+                                required
+                                value={botForm.description}
+                                onChange={e => setBotForm({...botForm, description: e.target.value})}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none"
+                                placeholder="Botun özellikleri..."
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Fiyat (₺)</label>
+                                <input 
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={botForm.price}
+                                    onChange={e => setBotForm({...botForm, price: e.target.value})}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
+                                    placeholder="0"
+                                />
+                            </div>
+                             <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Durum</label>
+                                <select 
+                                    value={botForm.status}
+                                    onChange={e => setBotForm({...botForm, status: e.target.value as 'active' | 'passive'})}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="active">Aktif (Yayında)</option>
+                                    <option value="passive">Pasif (Gizli)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 block mb-1">İkon URL</label>
                             <div className="relative">
                                 <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                                 <input 
                                     type="text"
-                                    value={newBotForm.icon}
-                                    onChange={e => setNewBotForm({...newBotForm, icon: e.target.value})}
+                                    value={botForm.icon}
+                                    onChange={e => setBotForm({...botForm, icon: e.target.value})}
                                     className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 text-sm"
-                                    placeholder="https://..."
+                                    placeholder="https://... (Boş bırakılırsa otomatik üretilir)"
                                 />
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer" onClick={() => setNewBotForm({...newBotForm, isPremium: !newBotForm.isPremium})}>
-                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${newBotForm.isPremium ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
-                                {newBotForm.isPremium && <X size={14} className="text-white" />}
+
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 block mb-1">Ekran Görüntüleri (URL)</label>
+                            <textarea 
+                                value={botForm.screenshots}
+                                onChange={e => setBotForm({...botForm, screenshots: e.target.value})}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 text-sm"
+                                placeholder="Her satıra bir görsel URL'si girin..."
+                            />
+                            <p className="text-[10px] text-slate-500 mt-1">Örn: https://resim.com/1.jpg</p>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer" onClick={() => setBotForm({...botForm, isPremium: !botForm.isPremium})}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${botForm.isPremium ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
+                                {botForm.isPremium && <X size={14} className="text-white" />}
                             </div>
                             <span className="text-sm font-bold text-slate-300">Premium Bot Olarak İşaretle</span>
                         </div>
 
                         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors mt-4 flex items-center justify-center gap-2">
-                            <Save size={18} /> Kaydet ve Yayınla
+                            <Save size={18} /> {editingBotId ? 'Değişiklikleri Kaydet' : 'Kaydet ve Yayınla'}
                         </button>
                     </form>
                 </div>

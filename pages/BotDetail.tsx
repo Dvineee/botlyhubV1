@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Share2, Bookmark, Send } from 'lucide-react';
+import { ChevronLeft, Share2, Bookmark, Send, ImageOff } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { UserBot } from '../types';
 import { useTelegram } from '../hooks/useTelegram';
@@ -71,6 +71,9 @@ const BotDetail = () => {
       }
   };
 
+  // Screenshots Logic
+  const hasScreenshots = bot.screenshots && bot.screenshots.length > 0;
+
   return (
     <div className="min-h-screen bg-slate-950 pb-24">
       {/* Header - Sticky */}
@@ -127,20 +130,23 @@ const BotDetail = () => {
              </div>
           </div>
 
-          {/* Screenshots Mock */}
+          {/* Screenshots Section */}
           <div className="mt-8">
                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 pl-1">Önizleme</h3>
-               <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-6 px-6 pb-2">
-                   {[1,2,3].map(i => (
-                       <div key={i} className="min-w-[160px] aspect-[9/16] bg-slate-800 rounded-xl border border-slate-700 overflow-hidden relative shadow-md">
-                            <div className="p-3 space-y-2 opacity-50">
-                                <div className="w-full h-1.5 bg-slate-600 rounded-full"></div>
-                                <div className="w-2/3 h-1.5 bg-slate-600 rounded-full"></div>
-                                <div className="w-full h-24 bg-slate-700/50 rounded-lg mt-3"></div>
-                            </div>
-                       </div>
-                   ))}
-               </div>
+               {hasScreenshots ? (
+                   <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-6 px-6 pb-2 snap-x">
+                       {bot.screenshots!.map((src, i) => (
+                           <div key={i} className="min-w-[160px] aspect-[9/16] bg-slate-800 rounded-xl border border-slate-700 overflow-hidden relative shadow-md snap-center">
+                                <img src={src} alt={`Screenshot ${i+1}`} className="w-full h-full object-cover" />
+                           </div>
+                       ))}
+                   </div>
+               ) : (
+                   <div className="w-full aspect-[16/9] bg-slate-900 rounded-xl border border-slate-800 border-dashed flex flex-col items-center justify-center text-slate-600">
+                       <ImageOff size={24} className="mb-2 opacity-50" />
+                       <span className="text-xs">Görsel eklenmemiş</span>
+                   </div>
+               )}
           </div>
       </div>
 

@@ -25,6 +25,8 @@ export interface Bot {
 
 export interface ExtendedBot extends Bot {
   isPremium?: boolean;
+  screenshots?: string[]; // Bot ekran görüntüleri
+  status?: 'active' | 'passive'; // Market durumu
 }
 
 export interface UserBot extends Bot {

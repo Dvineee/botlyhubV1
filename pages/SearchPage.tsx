@@ -2,8 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronLeft, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { mockBots, categories } from '../data';
+import { categories } from '../data';
 import { useTranslation } from '../TranslationContext';
+import { MarketplaceService } from '../services/MarketplaceService';
+import { ExtendedBot } from '../types';
 
 const SearchPage = () => {
   const navigate = useNavigate();
@@ -17,11 +19,13 @@ const SearchPage = () => {
 
   const [query, setQuery] = useState(initialQuery);
   const [activeCategory, setActiveCategory] = useState(initialCategory);
+  const [marketplaceBots, setMarketplaceBots] = useState<ExtendedBot[]>([]);
 
   // Sync state if URL changes (e.g. back button)
   useEffect(() => {
       setQuery(searchParams.get('q') || '');
       setActiveCategory(searchParams.get('category') || 'all');
+      setMarketplaceBots(MarketplaceService.getAllBots());
   }, [searchParams]);
 
   const handleSearchChange = (val: string) => {
@@ -33,7 +37,7 @@ const SearchPage = () => {
   };
 
   // Filter bots based on name/desc AND category
-  const filteredBots = mockBots.filter(bot => {
+  const filteredBots = marketplaceBots.filter(bot => {
     const matchesText = bot.name.toLowerCase().includes(query.toLowerCase()) || 
                         bot.description.toLowerCase().includes(query.toLowerCase());
     

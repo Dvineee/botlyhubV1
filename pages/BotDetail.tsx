@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Share2, Bookmark, Send } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { mockBots } from '../data';
 import { UserBot } from '../types';
 import { useTelegram } from '../hooks/useTelegram';
+import { MarketplaceService } from '../services/MarketplaceService';
 
 const BotDetail = () => {
   const navigate = useNavigate();
@@ -11,8 +12,8 @@ const BotDetail = () => {
   const { haptic, openLink, notification } = useTelegram();
   const [isOwned, setIsOwned] = useState(false);
 
-  // Find the bot from the mock database
-  const bot = mockBots.find(b => b.id === id);
+  // Find the bot from the dynamic service
+  const bot = id ? MarketplaceService.getBotById(id) : undefined;
 
   // Check if bot is already owned
   useEffect(() => {
@@ -22,7 +23,7 @@ const BotDetail = () => {
   }, [id]);
 
   if (!bot) {
-      return <div className="p-8 text-center text-slate-500">Bot bulunamadı.</div>;
+      return <div className="p-8 text-center text-slate-500">Bot bulunamadı veya silinmiş.</div>;
   }
 
   const handleAction = () => {
@@ -144,7 +145,7 @@ const BotDetail = () => {
       </div>
 
       {/* Sticky Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-950/90 backdrop-blur-lg border-t border-slate-800 p-4 pb-8 z-50 safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-lg border-t border-slate-800 p-4 pb-8 z-50 safe-area-bottom">
           <div className="max-w-md mx-auto flex gap-3">
               <button 
                  className={`flex-1 transition-all text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 ${

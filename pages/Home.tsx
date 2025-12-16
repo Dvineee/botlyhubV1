@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Sparkles, TrendingUp, BarChart3, ChevronRight, LayoutGrid, Store, User, Bot as BotIcon, Megaphone, DollarSign, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ExtendedBot } from '../types';
-import { mockBots, categories } from '../data';
+import { categories } from '../data';
 import { useTranslation } from '../TranslationContext';
+import { MarketplaceService } from '../services/MarketplaceService';
 
 // Helper component for rendering a single bot card
 const BotCard: React.FC<{ bot: ExtendedBot }> = ({ bot }) => {
@@ -49,10 +50,18 @@ const Home = () => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
+  // Data State
+  const [marketplaceBots, setMarketplaceBots] = useState<ExtendedBot[]>([]);
+
   // Search States
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearchCategory, setActiveSearchCategory] = useState('all');
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+
+  useEffect(() => {
+    // Load bots from service (LocalStorage)
+    setMarketplaceBots(MarketplaceService.getAllBots());
+  }, []);
 
   // Search is active if text exists OR overlay is explicitly opened (e.g. by category click)
   const isSearchActive = searchQuery.trim().length > 0 || isOverlayOpen;
@@ -93,7 +102,7 @@ const Home = () => {
   };
 
   // Filter bots for search mode
-  const filteredBots = mockBots.filter(bot => {
+  const filteredBots = marketplaceBots.filter(bot => {
       const matchesText = bot.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           bot.description.toLowerCase().includes(searchQuery.toLowerCase());
       
@@ -104,7 +113,7 @@ const Home = () => {
 
   // Helper to render dashboard category section
   const CategorySection = ({ title, categoryId }: { title: string, categoryId: string }) => {
-    const bots = mockBots.filter(b => b.category === categoryId).slice(0, 3);
+    const bots = marketplaceBots.filter(b => b.category === categoryId).slice(0, 3);
     
     if (bots.length === 0) return null;
 
@@ -215,7 +224,7 @@ const Home = () => {
             <span className="text-xs text-blue-500 cursor-pointer">{t('clear')}</span>
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 -mx-4 px-4">
-             {mockBots.slice(0,6).map((bot) => (
+             {marketplaceBots.slice(0,6).map((bot) => (
                <div key={bot.id} onClick={() => navigate(`/bot/${bot.id}`)} className="min-w-[70px] flex flex-col items-center gap-2 cursor-pointer group">
                  <div className="w-16 h-16 rounded-xl bg-slate-900 border border-slate-800 p-0.5 group-hover:border-slate-700 transition-colors shadow-sm">
                     <img src={bot.icon} alt={bot.name} className="w-full h-full rounded-xl object-cover" />
@@ -244,7 +253,7 @@ const Home = () => {
                 </button>
             </div>
             <div className="flex flex-col gap-2">
-                {mockBots.filter(b => !['productivity', 'games', 'finance'].includes(b.category)).map((bot) => (
+                {marketplaceBots.filter(b => !['productivity', 'games', 'finance'].includes(b.category)).map((bot) => (
                     <BotCard key={bot.id} bot={bot} />
                 ))}
             </div>

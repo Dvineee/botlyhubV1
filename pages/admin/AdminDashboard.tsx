@@ -1,20 +1,34 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot, Info } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot, Info, Plus, X, Save, Image as ImageIcon } from 'lucide-react';
 import { Logger } from '../../services/Logger';
-import { SystemLog, AppStats, UserBot, Channel } from '../../types';
+import { MarketplaceService } from '../../services/MarketplaceService';
+import { SystemLog, AppStats, UserBot, Channel, ExtendedBot } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { categories } from '../../data';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<AppStats | null>(null);
   const [logs, setLogs] = useState<SystemLog[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'users' | 'bots'>('overview');
   
   // Data State
   const [totalOwnedBots, setTotalOwnedBots] = useState(0);
   const [totalChannels, setTotalChannels] = useState(0);
+  
+  // Bot Management State
+  const [marketplaceBots, setMarketplaceBots] = useState<ExtendedBot[]>([]);
+  const [showAddBotModal, setShowAddBotModal] = useState(false);
+  const [newBotForm, setNewBotForm] = useState({
+      name: '',
+      description: '',
+      price: '',
+      category: 'productivity',
+      icon: '',
+      isPremium: false
+  });
 
   useEffect(() => {
     // Auth Check
@@ -28,6 +42,7 @@ const AdminDashboard = () => {
     const s = Logger.getStats();
     setStats(s);
     setLogs(Logger.getLogs());
+    setMarketplaceBots(MarketplaceService.getAllBots());
 
     // Calculate dynamic stats from localStorage
     const ownedBots: UserBot[] = JSON.parse(localStorage.getItem('ownedBots') || '[]');
@@ -39,12 +54,10 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   // --- Live Simulation Effect ---
-  // Dashboard açıkken gerçek zamanlı veri akışı simülasyonu yapar
   useEffect(() => {
       if (!stats) return;
 
       const interval = setInterval(() => {
-          // %30 ihtimalle yeni görüntülenme ekle
           if (Math.random() > 0.7) {
               setStats(prev => {
                   if (!prev) return null;
@@ -52,7 +65,7 @@ const AdminDashboard = () => {
                       ...prev, 
                       totalViews: prev.totalViews + Math.floor(Math.random() * 3) + 1 
                   };
-                  Logger.saveStats(newStats); // Veriyi kaydet
+                  Logger.saveStats(newStats); 
                   return newStats;
               });
           }
@@ -71,7 +84,37 @@ const AdminDashboard = () => {
       setLogs([]);
   };
 
-  // Mock Graph Data based on views (Dynamic)
+  // Bot Management Functions
+  const handleDeleteBot = (id: string) => {
+      if(window.confirm('Bu botu marketten silmek istediğinize emin misiniz?')) {
+          MarketplaceService.deleteBot(id);
+          setMarketplaceBots(MarketplaceService.getAllBots()); // Refresh list
+          Logger.log('USER_ACTION', `Bot silindi (ID: ${id})`);
+      }
+  };
+
+  const handleAddBot = (e: React.FormEvent) => {
+      e.preventDefault();
+      
+      const iconUrl = newBotForm.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(newBotForm.name)}&background=random&size=200`;
+
+      MarketplaceService.addBot({
+          name: newBotForm.name,
+          description: newBotForm.description,
+          price: parseFloat(newBotForm.price) || 0,
+          category: newBotForm.category,
+          icon: iconUrl,
+          isPremium: newBotForm.isPremium
+      });
+
+      setMarketplaceBots(MarketplaceService.getAllBots());
+      setShowAddBotModal(false);
+      setNewBotForm({ name: '', description: '', price: '', category: 'productivity', icon: '', isPremium: false });
+      Logger.log('USER_ACTION', `Yeni bot eklendi: ${newBotForm.name}`);
+      alert('Bot başarıyla markete eklendi.');
+  };
+
+  // Mock Graph Data
   const getGraphData = () => {
      if (!stats) return [];
      const base = stats.totalViews;
@@ -101,6 +144,10 @@ const AdminDashboard = () => {
                     <LayoutDashboard size={20} />
                     <span className="font-medium text-sm">Genel Bakış</span>
                 </button>
+                <button onClick={() => setActiveTab('bots')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'bots' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
+                    <Bot size={20} />
+                    <span className="font-medium text-sm">Bot Yönetimi</span>
+                </button>
                 <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
                     <Users size={20} />
                     <span className="font-medium text-sm">Kullanıcı Verileri</span>
@@ -118,7 +165,7 @@ const AdminDashboard = () => {
             </div>
         </div>
 
-        {/* Mobile Header (visible only on small screens) */}
+        {/* Mobile Header */}
         <div className="md:hidden fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-800 p-4 z-20 flex justify-between items-center">
              <span className="font-bold">Admin Panel</span>
              <button onClick={handleLogout}><LogOut size={20} /></button>
@@ -229,6 +276,63 @@ const AdminDashboard = () => {
                 </div>
             )}
 
+            {activeTab === 'bots' && (
+                <div className="animate-in fade-in">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold">Bot Yönetimi</h2>
+                        <button onClick={() => setShowAddBotModal(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
+                            <Plus size={18} /> Yeni Bot Ekle
+                        </button>
+                    </div>
+
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-950 border-b border-slate-800 text-xs text-slate-400 uppercase">
+                                    <th className="p-4 font-semibold">Bot</th>
+                                    <th className="p-4 font-semibold">Kategori</th>
+                                    <th className="p-4 font-semibold">Fiyat</th>
+                                    <th className="p-4 font-semibold text-right">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm text-slate-300">
+                                {marketplaceBots.map((bot) => (
+                                    <tr key={bot.id} className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors">
+                                        <td className="p-4 flex items-center gap-3">
+                                            <img src={bot.icon} alt={bot.name} className="w-10 h-10 rounded-lg object-cover bg-slate-800" />
+                                            <div>
+                                                <div className="font-bold text-white flex items-center gap-2">
+                                                    {bot.name}
+                                                    {bot.isPremium && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30">PREMIUM</span>}
+                                                </div>
+                                                <div className="text-xs text-slate-500 truncate max-w-[200px]">{bot.description}</div>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="bg-slate-800 text-slate-400 px-2 py-1 rounded text-xs font-bold capitalize">
+                                                {bot.category}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 font-mono">
+                                            {bot.price === 0 ? <span className="text-emerald-400 font-bold">Ücretsiz</span> : `₺${bot.price}`}
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button 
+                                                onClick={() => handleDeleteBot(bot.id)}
+                                                className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                                title="Botu Sil"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'logs' && (
                 <div className="animate-in fade-in">
                      <div className="flex justify-between items-center mb-6">
@@ -282,9 +386,9 @@ const AdminDashboard = () => {
             {activeTab === 'users' && (
                  <div className="animate-in fade-in">
                     <h2 className="text-2xl font-bold mb-6">Kullanıcı Verileri (Local Storage)</h2>
-                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                        {/* Mevcut User Tab İçeriği Aynen Kalacak */}
+                         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                             <h3 className="font-bold mb-4 flex items-center gap-2">
                                 <Bot size={20} className="text-blue-500" />
                                 Satın Alınan Botlar ({totalOwnedBots})
@@ -305,7 +409,6 @@ const AdminDashboard = () => {
                                 </ul>
                             )}
                         </div>
-
                         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
                             <h3 className="font-bold mb-4 flex items-center gap-2">
                                 <LayoutDashboard size={20} className="text-purple-500" />
@@ -330,8 +433,93 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             )}
-
         </div>
+
+        {/* Add Bot Modal */}
+        {showAddBotModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddBotModal(false)}></div>
+                <div className="bg-slate-900 w-full max-w-md rounded-2xl border border-slate-800 p-6 relative z-10 animate-in zoom-in-95 shadow-2xl">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-bold text-white">Yeni Bot Ekle</h3>
+                        <button onClick={() => setShowAddBotModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
+                    </div>
+                    
+                    <form onSubmit={handleAddBot} className="space-y-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 block mb-1">Bot Adı</label>
+                            <input 
+                                type="text"
+                                required
+                                value={newBotForm.name}
+                                onChange={e => setNewBotForm({...newBotForm, name: e.target.value})}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
+                                placeholder="Örn: Super Moderator"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 block mb-1">Açıklama</label>
+                            <textarea 
+                                required
+                                value={newBotForm.description}
+                                onChange={e => setNewBotForm({...newBotForm, description: e.target.value})}
+                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none"
+                                placeholder="Botun özellikleri hakkında kısa bilgi..."
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Fiyat (₺)</label>
+                                <input 
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    value={newBotForm.price}
+                                    onChange={e => setNewBotForm({...newBotForm, price: e.target.value})}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
+                                    placeholder="0"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-400 block mb-1">Kategori</label>
+                                <select 
+                                    value={newBotForm.category}
+                                    onChange={e => setNewBotForm({...newBotForm, category: e.target.value})}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
+                                >
+                                    {categories.filter(c => c.id !== 'all').map(c => (
+                                        <option key={c.id} value={c.id}>{c.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-400 block mb-1">İkon URL (Opsiyonel)</label>
+                            <div className="relative">
+                                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                                <input 
+                                    type="text"
+                                    value={newBotForm.icon}
+                                    onChange={e => setNewBotForm({...newBotForm, icon: e.target.value})}
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 text-sm"
+                                    placeholder="https://..."
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer" onClick={() => setNewBotForm({...newBotForm, isPremium: !newBotForm.isPremium})}>
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${newBotForm.isPremium ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
+                                {newBotForm.isPremium && <X size={14} className="text-white" />}
+                            </div>
+                            <span className="text-sm font-bold text-slate-300">Premium Bot Olarak İşaretle</span>
+                        </div>
+
+                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors mt-4 flex items-center justify-center gap-2">
+                            <Save size={18} /> Kaydet ve Yayınla
+                        </button>
+                    </form>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

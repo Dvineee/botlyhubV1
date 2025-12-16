@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Star, Wallet, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { mockBots, subscriptionPlans } from '../data';
+import { subscriptionPlans } from '../data';
 import { UserBot } from '../types';
 import { WalletService } from '../services/WalletService';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Logger } from '../services/Logger';
+import { MarketplaceService } from '../services/MarketplaceService';
 
 const Payment = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const Payment = () => {
   const [tonConnectUI] = useTonConnectUI();
 
   // Identify Item (Bot or Plan)
-  const bot = mockBots.find(b => b.id === id);
+  const bot = id ? MarketplaceService.getBotById(id) : undefined;
   const plan = subscriptionPlans.find(p => p.id === id);
   const item = bot || plan;
 

@@ -3,6 +3,8 @@ import React, { useEffect, Suspense, lazy } from 'react';
 import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { Logger } from './services/Logger';
+import { DatabaseService } from './services/DatabaseService';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Lazy Load Pages for Performance Optimization
 const Home = lazy(() => import('./pages/Home'));
@@ -43,6 +45,9 @@ const TelegramWrapper = ({ children }: { children?: React.ReactNode }) => {
   }, [location.pathname]);
 
   useEffect(() => {
+    // 0. Initialize Database
+    DatabaseService.init();
+
     // 1. Initialize Telegram WebApp Features
     const initTelegram = () => {
         const tg = window.Telegram?.WebApp;
@@ -148,7 +153,14 @@ export default function App() {
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route 
+                    path="/admin/dashboard" 
+                    element={
+                        <ProtectedRoute>
+                            <AdminDashboard />
+                        </ProtectedRoute>
+                    } 
+                />
               </Routes>
             </Suspense>
           </div>

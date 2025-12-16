@@ -10,6 +10,7 @@ import {
 import { Logger } from '../../services/Logger';
 import { MarketplaceService } from '../../services/MarketplaceService';
 import { UserService } from '../../services/UserService';
+import { AuthService } from '../../services/AuthService';
 import { SystemLog, AppStats, UserBot, Channel, ExtendedBot, User } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell } from 'recharts';
 import { categories } from '../../data';
@@ -44,6 +45,11 @@ const AdminDashboard = () => {
       name: '', description: '', price: '', category: 'productivity', icon: '', isPremium: false, status: 'active' as 'active' | 'passive', screenshots: '' 
   });
 
+  const handleLogout = useCallback(() => {
+      AuthService.logout();
+      navigate('/admin/login');
+  }, [navigate]);
+
   // --- Security: Auto Logout ---
   useEffect(() => {
       const checkInactivity = () => {
@@ -63,18 +69,13 @@ const AdminDashboard = () => {
           window.removeEventListener('keydown', updateActivity);
           clearInterval(timer);
       };
-  }, [lastActivity]);
+  }, [lastActivity, handleLogout]);
 
   // --- Initialization ---
   useEffect(() => {
-    const isAuth = sessionStorage.getItem('isAdminAuthenticated');
-    if (!isAuth) {
-        navigate('/admin/login');
-        return;
-    }
-
+    // Auth Check is now handled by ProtectedRoute
     refreshData();
-  }, [navigate]);
+  }, []);
 
   const refreshData = () => {
       // 1. Logs & Stats
@@ -90,7 +91,6 @@ const AdminDashboard = () => {
 
       // 4. Calculate Real Revenue & Sales (From Owned Bots Storage)
       const ownedBots: UserBot[] = JSON.parse(localStorage.getItem('ownedBots') || '[]');
-      const channels: Channel[] = JSON.parse(localStorage.getItem('userChannels') || '[]');
       
       const revenue = ownedBots.reduce((acc, bot) => acc + (bot.price || 0), 0);
       const totalSubscriptionsRevenue = 149.90 * 12; // Mock subs calculation for demo
@@ -109,11 +109,6 @@ const AdminDashboard = () => {
           value: catCount[key]
       }));
       setCategoryData(chartData);
-  };
-
-  const handleLogout = () => {
-      sessionStorage.removeItem('isAdminAuthenticated');
-      navigate('/admin/login');
   };
 
   const clearLogs = () => {

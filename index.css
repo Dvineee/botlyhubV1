@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #020617; 
+    /* Fix: Allow HTML to grow beyond 100% to enable scrolling */
+    min-height: 100%;
+    /* Prevent bounce effect on iOS but allow internal scrolling */
+    overscroll-behavior-y: none;
+  }
+  
+  body {
+    @apply bg-slate-950 text-white font-sans antialiased;
+    margin: 0;
+    padding: 0;
+    /* Fix: Ensure body takes at least full viewport but can grow */
+    min-height: 100vh;
+    /* Fix: Removed overflow-y: auto. Let the window handle the scrollbar. */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    
+    /* Safe Area Support for Notch/Home Bar */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  #root {
+    /* Fix: Ensure root container allows expansion */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Ensure Telegram inputs don't zoom */
+input, textarea, select {
+  font-size: 16px;
+}

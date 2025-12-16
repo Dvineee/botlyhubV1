@@ -1,7 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot, Info, Plus, X, Save, Image as ImageIcon, Edit, CheckCircle, Ban } from 'lucide-react';
+import { 
+    LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, 
+    Search, Trash2, Bot, Info, Plus, X, Save, Image as ImageIcon, 
+    Edit, CheckCircle, Ban, ChevronRight, MoreVertical 
+} from 'lucide-react';
 import { Logger } from '../../services/Logger';
 import { MarketplaceService } from '../../services/MarketplaceService';
 import { SystemLog, AppStats, UserBot, Channel, ExtendedBot } from '../../types';
@@ -31,7 +35,7 @@ const AdminDashboard = () => {
       icon: '',
       isPremium: false,
       status: 'active' as 'active' | 'passive',
-      screenshots: '' // Comma separated URLs for simplicity
+      screenshots: '' 
   });
 
   useEffect(() => {
@@ -48,7 +52,6 @@ const AdminDashboard = () => {
     setLogs(Logger.getLogs());
     setMarketplaceBots(MarketplaceService.getAllBots());
 
-    // Calculate dynamic stats from localStorage
     const ownedBots: UserBot[] = JSON.parse(localStorage.getItem('ownedBots') || '[]');
     const channels: Channel[] = JSON.parse(localStorage.getItem('userChannels') || '[]');
     
@@ -57,24 +60,19 @@ const AdminDashboard = () => {
 
   }, [navigate]);
 
-  // --- Live Simulation Effect ---
+  // Live Simulation
   useEffect(() => {
       if (!stats) return;
-
       const interval = setInterval(() => {
           if (Math.random() > 0.7) {
               setStats(prev => {
                   if (!prev) return null;
-                  const newStats = { 
-                      ...prev, 
-                      totalViews: prev.totalViews + Math.floor(Math.random() * 3) + 1 
-                  };
+                  const newStats = { ...prev, totalViews: prev.totalViews + Math.floor(Math.random() * 3) + 1 };
                   Logger.saveStats(newStats); 
                   return newStats;
               });
           }
       }, 2000);
-
       return () => clearInterval(interval);
   }, []);
 
@@ -88,12 +86,10 @@ const AdminDashboard = () => {
       setLogs([]);
   };
 
-  // Bot Management Functions
+  // Bot Actions
   const openAddModal = () => {
       setEditingBotId(null);
-      setBotForm({
-          name: '', description: '', price: '', category: 'productivity', icon: '', isPremium: false, status: 'active', screenshots: ''
-      });
+      setBotForm({ name: '', description: '', price: '', category: 'productivity', icon: '', isPremium: false, status: 'active', screenshots: '' });
       setShowBotModal(true);
   };
 
@@ -113,9 +109,9 @@ const AdminDashboard = () => {
   };
 
   const handleDeleteBot = (id: string) => {
-      if(window.confirm('Bu botu marketten silmek istediğinize emin misiniz?')) {
+      if(window.confirm('Bu botu silmek istediğinize emin misiniz?')) {
           MarketplaceService.deleteBot(id);
-          setMarketplaceBots(MarketplaceService.getAllBots()); // Refresh list
+          setMarketplaceBots(MarketplaceService.getAllBots());
           Logger.log('USER_ACTION', `Bot silindi (ID: ${id})`);
       }
   };
@@ -124,45 +120,30 @@ const AdminDashboard = () => {
       const newStatus = bot.status === 'active' ? 'passive' : 'active';
       MarketplaceService.updateBot(bot.id, { status: newStatus });
       setMarketplaceBots(MarketplaceService.getAllBots());
-      Logger.log('USER_ACTION', `Bot durumu değiştirildi: ${bot.name} -> ${newStatus}`);
+      Logger.log('USER_ACTION', `Bot durumu: ${newStatus}`);
   };
 
   const handleSaveBot = (e: React.FormEvent) => {
       e.preventDefault();
-      
       const iconUrl = botForm.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(botForm.name)}&background=random&size=200`;
-      
-      // Parse screenshots (split by newline or comma)
-      const screenshotList = botForm.screenshots
-        .split(/[\n,]+/)
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+      const screenshotList = botForm.screenshots.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
+
+      const botData = {
+          name: botForm.name,
+          description: botForm.description,
+          price: parseFloat(botForm.price) || 0,
+          category: botForm.category,
+          icon: iconUrl,
+          isPremium: botForm.isPremium,
+          status: botForm.status,
+          screenshots: screenshotList
+      };
 
       if (editingBotId) {
-          // Update
-          MarketplaceService.updateBot(editingBotId, {
-              name: botForm.name,
-              description: botForm.description,
-              price: parseFloat(botForm.price) || 0,
-              category: botForm.category,
-              icon: iconUrl,
-              isPremium: botForm.isPremium,
-              status: botForm.status,
-              screenshots: screenshotList
-          });
+          MarketplaceService.updateBot(editingBotId, botData);
           Logger.log('USER_ACTION', `Bot güncellendi: ${botForm.name}`);
       } else {
-          // Add
-          MarketplaceService.addBot({
-              name: botForm.name,
-              description: botForm.description,
-              price: parseFloat(botForm.price) || 0,
-              category: botForm.category,
-              icon: iconUrl,
-              isPremium: botForm.isPremium,
-              status: botForm.status,
-              screenshots: screenshotList
-          });
+          MarketplaceService.addBot(botData);
           Logger.log('USER_ACTION', `Yeni bot eklendi: ${botForm.name}`);
       }
 
@@ -170,7 +151,7 @@ const AdminDashboard = () => {
       setShowBotModal(false);
   };
 
-  // Mock Graph Data
+  // Graph Data
   const getGraphData = () => {
      if (!stats) return [];
      const base = stats.totalViews;
@@ -185,148 +166,151 @@ const AdminDashboard = () => {
      ];
   };
 
-  if (!stats) return <div className="p-8 text-white">Yükleniyor...</div>;
+  if (!stats) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Yükleniyor...</div>;
+
+  // --- Components ---
+
+  const StatCard = ({ title, value, icon: Icon, color, subValue }: any) => (
+      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800 p-5 rounded-2xl relative overflow-hidden group hover:border-slate-700 transition-colors">
+          <div className={`absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity ${color.text}`}>
+              <Icon size={64} />
+          </div>
+          <div className="flex justify-between items-start mb-4 relative z-10">
+              <div className={`p-3 rounded-xl ${color.bg} ${color.text}`}>
+                  <Icon size={24} />
+              </div>
+              {subValue && <span className="text-[10px] font-bold bg-slate-800 px-2 py-1 rounded-lg text-slate-400">{subValue}</span>}
+          </div>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">{title}</p>
+          <h3 className="text-2xl font-bold mt-1 text-white">{value}</h3>
+      </div>
+  );
+
+  const NavItem = ({ id, icon: Icon, label }: any) => (
+      <button 
+          onClick={() => setActiveTab(id)} 
+          className={`flex flex-col md:flex-row items-center md:gap-3 p-2 md:px-4 md:py-3 rounded-xl transition-all ${
+              activeTab === id 
+              ? 'text-blue-500 md:bg-blue-600 md:text-white' 
+              : 'text-slate-500 hover:text-slate-300 md:hover:bg-slate-800'
+          }`}
+      >
+          <Icon size={24} className="mb-1 md:mb-0" />
+          <span className="text-[10px] md:text-sm font-medium">{label}</span>
+      </button>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col fixed h-full z-10 hidden md:flex">
-            <div className="p-6 border-b border-slate-800">
-                <h1 className="font-bold text-xl tracking-tight">BotlyHub Admin</h1>
-                <p className="text-xs text-slate-500">v2.1.0 Stable</p>
+    <div className="min-h-screen bg-slate-950 text-white flex flex-col md:flex-row">
+        
+        {/* Desktop Sidebar */}
+        <aside className="hidden md:flex w-72 bg-slate-900 border-r border-slate-800 flex-col fixed h-full z-20">
+            <div className="p-8 border-b border-slate-800/50">
+                <h1 className="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Botly Admin</h1>
+                <p className="text-xs text-slate-500 mt-1">Yönetim Paneli v2.0</p>
             </div>
-            <nav className="flex-1 p-4 space-y-2">
-                <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <LayoutDashboard size={20} />
-                    <span className="font-medium text-sm">Genel Bakış</span>
-                </button>
-                <button onClick={() => setActiveTab('bots')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'bots' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <Bot size={20} />
-                    <span className="font-medium text-sm">Bot Yönetimi</span>
-                </button>
-                <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <Users size={20} />
-                    <span className="font-medium text-sm">Kullanıcı Verileri</span>
-                </button>
-                <button onClick={() => setActiveTab('logs')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'logs' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <Terminal size={20} />
-                    <span className="font-medium text-sm">Sistem Logları</span>
-                </button>
+            <nav className="flex-1 p-6 space-y-2">
+                <NavItem id="overview" icon={LayoutDashboard} label="Genel Bakış" />
+                <NavItem id="bots" icon={Bot} label="Bot Yönetimi" />
+                <NavItem id="users" icon={Users} label="Kullanıcılar" />
+                <NavItem id="logs" icon={Terminal} label="Log Kayıtları" />
             </nav>
-            <div className="p-4 border-t border-slate-800">
+            <div className="p-6 border-t border-slate-800/50">
                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors">
                     <LogOut size={20} />
-                    <span className="font-medium text-sm">Çıkış Yap</span>
+                    <span className="font-medium text-sm">Güvenli Çıkış</span>
                 </button>
             </div>
-        </div>
+        </aside>
 
-        {/* Mobile Header */}
-        <div className="md:hidden fixed top-0 left-0 right-0 bg-slate-900 border-b border-slate-800 p-4 z-20 flex justify-between items-center">
-             <span className="font-bold">Admin Panel</span>
-             <button onClick={handleLogout}><LogOut size={20} /></button>
-        </div>
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 z-50 pb-safe">
+            <div className="grid grid-cols-4 p-2">
+                <NavItem id="overview" icon={LayoutDashboard} label="Özet" />
+                <NavItem id="bots" icon={Bot} label="Botlar" />
+                <NavItem id="users" icon={Users} label="Kullanıcı" />
+                <NavItem id="logs" icon={Terminal} label="Loglar" />
+            </div>
+        </nav>
 
-        {/* Main Content */}
-        <div className="flex-1 md:ml-64 p-8 pt-20 md:pt-8 overflow-y-auto">
+        {/* Main Content Area */}
+        <main className="flex-1 md:ml-72 p-4 md:p-8 pb-24 md:pb-8 overflow-y-auto min-h-screen">
             
+            {/* Header Mobile Only */}
+            <div className="md:hidden flex justify-between items-center mb-6 pt-2">
+                <div>
+                    <h1 className="text-xl font-bold">Admin Panel</h1>
+                    <p className="text-xs text-slate-500">Hoşgeldin, Admin</p>
+                </div>
+                <button onClick={handleLogout} className="p-2 bg-slate-900 rounded-full border border-slate-800 text-slate-400">
+                    <LogOut size={18} />
+                </button>
+            </div>
+
+            {/* Content Switcher */}
             {activeTab === 'overview' && (
-                <div className="animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex items-center gap-2 mb-6 bg-blue-900/20 border border-blue-900/50 p-3 rounded-lg">
-                        <Info className="text-blue-400" size={20} />
-                        <p className="text-sm text-blue-200">
-                            <strong>Demo Modu:</strong> Şu anda görüntülenen veriler simülasyon amaçlıdır ve tarayıcınızda (Local Storage) saklanmaktadır.
-                        </p>
-                    </div>
-
-                    <h2 className="text-2xl font-bold mb-6">Genel Durum</h2>
-                    
-                    {/* Stat Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Activity size={64} /></div>
-                            <div className="flex justify-between items-start mb-4 relative z-10">
-                                <div className="p-3 bg-blue-500/20 text-blue-500 rounded-xl"><Activity size={24} /></div>
-                                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded animate-pulse">CANLI</span>
-                            </div>
-                            <p className="text-slate-500 text-sm">Toplam Görüntülenme</p>
-                            <h3 className="text-3xl font-bold mt-1 tabular-nums">{stats.totalViews}</h3>
-                        </div>
-                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                             <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-purple-500/20 text-purple-500 rounded-xl"><Users size={24} /></div>
-                            </div>
-                            <p className="text-slate-500 text-sm">Kayıtlı Kullanıcı</p>
-                            <h3 className="text-3xl font-bold mt-1">{stats.totalUsers}</h3>
-                        </div>
-                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                             <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-emerald-500/20 text-emerald-500 rounded-xl"><DollarSign size={24} /></div>
-                            </div>
-                            <p className="text-slate-500 text-sm">Toplam Hasılat</p>
-                            <h3 className="text-3xl font-bold mt-1 tabular-nums">₺{stats.totalRevenue.toFixed(2)}</h3>
-                        </div>
-                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                             <div className="flex justify-between items-start mb-4">
-                                <div className="p-3 bg-orange-500/20 text-orange-500 rounded-xl"><Bot size={24} /></div>
-                            </div>
-                            <p className="text-slate-500 text-sm">Satılan Botlar</p>
-                            <h3 className="text-3xl font-bold mt-1">{totalOwnedBots}</h3>
+                <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6">
+                    {/* Warning Banner */}
+                    <div className="bg-blue-900/10 border border-blue-500/20 p-4 rounded-xl flex gap-3 items-start">
+                        <Info className="text-blue-400 flex-shrink-0" size={20} />
+                        <div>
+                            <h4 className="font-bold text-sm text-blue-200">Demo Modu Aktif</h4>
+                            <p className="text-xs text-blue-300/70 mt-1">Görüntülenen veriler simülasyon amaçlıdır. Değişiklikler tarayıcı hafızasında saklanır.</p>
                         </div>
                     </div>
 
-                    {/* Charts Area */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                            <h3 className="font-bold mb-6">Trafik Analizi (Son 7 Gün)</h3>
-                            <div className="h-[300px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={getGraphData()}>
-                                        <defs>
-                                            <linearGradient id="colorView" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                                        <XAxis dataKey="name" stroke="#64748b" tick={{fontSize: 12}} />
-                                        <YAxis stroke="#64748b" tick={{fontSize: 12}} />
-                                        <Tooltip 
-                                            contentStyle={{backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff'}}
-                                            itemStyle={{color: '#3b82f6'}}
-                                        />
-                                        <Area type="monotone" dataKey="view" stroke="#3b82f6" fillOpacity={1} fill="url(#colorView)" animationDuration={1000} />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatCard 
+                            title="Görüntülenme" 
+                            value={stats.totalViews} 
+                            icon={Activity} 
+                            color={{bg: 'bg-emerald-500/20', text: 'text-emerald-500'}} 
+                            subValue="Canlı"
+                        />
+                        <StatCard 
+                            title="Kullanıcılar" 
+                            value={stats.totalUsers} 
+                            icon={Users} 
+                            color={{bg: 'bg-blue-500/20', text: 'text-blue-500'}} 
+                        />
+                        <StatCard 
+                            title="Toplam Hasılat" 
+                            value={`₺${stats.totalRevenue.toFixed(0)}`} 
+                            icon={DollarSign} 
+                            color={{bg: 'bg-yellow-500/20', text: 'text-yellow-500'}} 
+                        />
+                        <StatCard 
+                            title="Satılan Bot" 
+                            value={totalOwnedBots} 
+                            icon={Bot} 
+                            color={{bg: 'bg-purple-500/20', text: 'text-purple-500'}} 
+                        />
+                    </div>
 
-                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                            <h3 className="font-bold mb-4">Hızlı İstatistikler</h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800">
-                                    <span className="text-sm text-slate-400">Bağlı Kanallar</span>
-                                    <span className="font-bold">{totalChannels}</span>
-                                </div>
-                                <div className="flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800">
-                                    <span className="text-sm text-slate-400">Aktif Abonelikler</span>
-                                    <span className="font-bold">12</span>
-                                </div>
-                                <div className="flex justify-between items-center p-3 bg-slate-950 rounded-xl border border-slate-800">
-                                    <span className="text-sm text-slate-400">Bekleyen Ödemeler</span>
-                                    <span className="font-bold text-orange-400">3</span>
-                                </div>
-                                <div className="mt-8 pt-4 border-t border-slate-800">
-                                    <p className="text-xs text-slate-500 mb-2">Sunucu Durumu</p>
-                                    <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="w-[98%] h-full bg-emerald-500 rounded-full animate-pulse"></div>
-                                    </div>
-                                    <div className="flex justify-between mt-1">
-                                        <span className="text-[10px] text-emerald-500">Online</span>
-                                        <span className="text-[10px] text-slate-500">99.9% Uptime</span>
-                                    </div>
-                                </div>
-                            </div>
+                    <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl">
+                        <h3 className="font-bold mb-6 flex items-center gap-2">
+                            <Activity size={18} className="text-blue-500" />
+                            Trafik Analizi
+                        </h3>
+                        <div className="h-[250px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={getGraphData()}>
+                                    <defs>
+                                        <linearGradient id="colorView" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                                    <XAxis dataKey="name" stroke="#64748b" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
+                                    <YAxis stroke="#64748b" tick={{fontSize: 10}} axisLine={false} tickLine={false} />
+                                    <Tooltip 
+                                        contentStyle={{backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff', borderRadius: '8px'}}
+                                        itemStyle={{color: '#3b82f6'}}
+                                    />
+                                    <Area type="monotone" dataKey="view" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorView)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
                 </div>
@@ -335,73 +319,49 @@ const AdminDashboard = () => {
             {activeTab === 'bots' && (
                 <div className="animate-in fade-in">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold">Bot Yönetimi</h2>
-                        <button onClick={openAddModal} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-blue-900/20">
-                            <Plus size={18} /> Yeni Bot Ekle
+                        <div>
+                            <h2 className="text-2xl font-bold">Bot Yönetimi</h2>
+                            <p className="text-xs text-slate-500 hidden md:block">Marketplace üzerindeki botları yönetin.</p>
+                        </div>
+                        <button onClick={openAddModal} className="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all active:scale-95">
+                            <Plus size={18} /> <span className="hidden md:inline">Yeni Bot Ekle</span><span className="md:hidden">Ekle</span>
                         </button>
                     </div>
 
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-slate-950 border-b border-slate-800 text-xs text-slate-400 uppercase">
-                                    <th className="p-4 font-semibold">Bot</th>
+                                <tr className="bg-slate-900 border-b border-slate-800 text-xs text-slate-400 uppercase">
+                                    <th className="p-4 font-semibold">Bot Bilgisi</th>
                                     <th className="p-4 font-semibold">Kategori</th>
                                     <th className="p-4 font-semibold">Fiyat</th>
                                     <th className="p-4 font-semibold">Durum</th>
-                                    <th className="p-4 font-semibold text-right">İşlem</th>
+                                    <th className="p-4 font-semibold text-right">İşlemler</th>
                                 </tr>
                             </thead>
                             <tbody className="text-sm text-slate-300">
                                 {marketplaceBots.map((bot) => (
-                                    <tr key={bot.id} className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors">
+                                    <tr key={bot.id} className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors">
                                         <td className="p-4 flex items-center gap-3">
-                                            <img src={bot.icon} alt={bot.name} className="w-10 h-10 rounded-lg object-cover bg-slate-800" />
+                                            <img src={bot.icon} className="w-10 h-10 rounded-lg bg-slate-800 object-cover" />
                                             <div>
-                                                <div className="font-bold text-white flex items-center gap-2">
-                                                    {bot.name}
-                                                    {bot.isPremium && <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-500/30">PREMIUM</span>}
-                                                </div>
-                                                <div className="text-xs text-slate-500 truncate max-w-[200px]">{bot.description}</div>
+                                                <div className="font-bold text-white">{bot.name}</div>
+                                                <div className="text-xs text-slate-500 truncate max-w-[150px]">{bot.description}</div>
                                             </div>
                                         </td>
+                                        <td className="p-4"><span className="bg-slate-800 px-2 py-1 rounded text-xs capitalize">{bot.category}</span></td>
+                                        <td className="p-4 font-mono font-bold">{bot.price === 0 ? <span className="text-emerald-400">Ücretsiz</span> : `₺${bot.price}`}</td>
                                         <td className="p-4">
-                                            <span className="bg-slate-800 text-slate-400 px-2 py-1 rounded text-xs font-bold capitalize">
-                                                {bot.category}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 font-mono">
-                                            {bot.price === 0 ? <span className="text-emerald-400 font-bold">Ücretsiz</span> : `₺${bot.price}`}
-                                        </td>
-                                        <td className="p-4">
-                                            <button 
-                                                onClick={() => handleToggleStatus(bot)}
-                                                className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-bold transition-colors ${
-                                                    (bot.status || 'active') === 'active' 
-                                                    ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' 
-                                                    : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                                                }`}
-                                            >
-                                                {(bot.status || 'active') === 'active' ? <CheckCircle size={14} /> : <Ban size={14} />}
-                                                <span className="capitalize">{(bot.status || 'active')}</span>
-                                            </button>
+                                             <button onClick={() => handleToggleStatus(bot)} className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-bold ${bot.status === 'active' ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                                                {bot.status === 'active' ? <CheckCircle size={12} /> : <Ban size={12} />}
+                                                <span className="capitalize">{bot.status || 'active'}</span>
+                                             </button>
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <button 
-                                                    onClick={() => openEditModal(bot)}
-                                                    className="p-2 text-slate-500 hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
-                                                    title="Düzenle"
-                                                >
-                                                    <Edit size={18} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDeleteBot(bot.id)}
-                                                    className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                                    title="Sil"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                                <button onClick={() => openEditModal(bot)} className="p-2 hover:bg-blue-500/10 text-slate-400 hover:text-blue-400 rounded-lg transition-colors"><Edit size={16} /></button>
+                                                <button onClick={() => handleDeleteBot(bot.id)} className="p-2 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg transition-colors"><Trash2 size={16} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -409,218 +369,139 @@ const AdminDashboard = () => {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-3">
+                        {marketplaceBots.map((bot) => (
+                            <div key={bot.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex gap-4 items-start relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-white/5 to-transparent rounded-bl-full -mr-4 -mt-4 pointer-events-none"></div>
+                                <img src={bot.icon} className="w-16 h-16 rounded-xl bg-slate-800 object-cover flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="font-bold text-white truncate pr-6">{bot.name}</h3>
+                                        <button onClick={(e) => { e.stopPropagation(); openEditModal(bot); }} className="p-1 text-slate-400"><Edit size={16} /></button>
+                                    </div>
+                                    <p className="text-xs text-slate-500 truncate mb-2">{bot.category}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <span className="text-sm font-bold text-blue-400">{bot.price === 0 ? 'Ücretsiz' : `₺${bot.price}`}</span>
+                                        <button onClick={() => handleToggleStatus(bot)} className={`text-[10px] font-bold px-2 py-1 rounded-full border ${bot.status === 'active' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' : 'border-red-500/30 text-red-400 bg-red-500/10'}`}>
+                                            {bot.status === 'active' ? 'Aktif' : 'Pasif'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
+            {/* Logs Tab */}
             {activeTab === 'logs' && (
                 <div className="animate-in fade-in">
-                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold">Sistem Logları</h2>
-                        <button onClick={clearLogs} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm transition-colors">
-                            <Trash2 size={16} /> Temizle
-                        </button>
+                     <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold">Loglar</h2>
+                        <button onClick={clearLogs} className="text-xs text-red-400 hover:text-red-300">Temizle</button>
                     </div>
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-950 border-b border-slate-800 text-xs text-slate-400 uppercase">
-                                        <th className="p-4 font-semibold">Tarih</th>
-                                        <th className="p-4 font-semibold">Tip</th>
-                                        <th className="p-4 font-semibold">Mesaj</th>
-                                        <th className="p-4 font-semibold">Detay</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="text-sm text-slate-300">
-                                    {logs.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="p-8 text-center text-slate-500">Log kaydı bulunamadı.</td>
-                                        </tr>
-                                    ) : (
-                                        logs.map((log) => (
-                                            <tr key={log.id} className="border-b border-slate-800/50 hover:bg-slate-800/50 transition-colors">
-                                                <td className="p-4 font-mono text-xs text-slate-500 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
-                                                <td className="p-4">
-                                                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${
-                                                        log.type === 'ERROR' ? 'bg-red-500/10 text-red-400' :
-                                                        log.type === 'WARNING' ? 'bg-yellow-500/10 text-yellow-400' :
-                                                        log.type === 'TRANSACTION' ? 'bg-emerald-500/10 text-emerald-400' :
-                                                        'bg-blue-500/10 text-blue-400'
-                                                    }`}>
-                                                        {log.type}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4">{log.message}</td>
-                                                <td className="p-4 text-xs font-mono text-slate-500 max-w-xs truncate">{JSON.stringify(log.details) || '-'}</td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="space-y-2">
+                        {logs.map(log => (
+                            <div key={log.id} className="bg-slate-900/50 border border-slate-800 p-3 rounded-xl flex gap-3 items-start text-xs">
+                                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${log.type === 'ERROR' ? 'bg-red-500' : log.type === 'WARNING' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between mb-1">
+                                        <span className="font-bold text-slate-300">{log.type}</span>
+                                        <span className="font-mono text-slate-600">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    </div>
+                                    <p className="text-slate-400">{log.message}</p>
+                                </div>
+                            </div>
+                        ))}
+                        {logs.length === 0 && <div className="text-center text-slate-600 py-10">Kayıt yok.</div>}
                     </div>
                 </div>
             )}
-
-            {activeTab === 'users' && (
+            
+            {/* Users Tab (Simplified) */}
+             {activeTab === 'users' && (
                  <div className="animate-in fade-in">
-                    <h2 className="text-2xl font-bold mb-6">Kullanıcı Verileri (Local Storage)</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                            <h3 className="font-bold mb-4 flex items-center gap-2">
-                                <Bot size={20} className="text-blue-500" />
-                                Satın Alınan Botlar ({totalOwnedBots})
-                            </h3>
-                             {totalOwnedBots === 0 ? (
-                                <p className="text-slate-500 text-sm">Henüz bot satışı yok.</p>
-                            ) : (
-                                <ul className="space-y-2">
-                                    {JSON.parse(localStorage.getItem('ownedBots') || '[]').map((b: any, i: number) => (
-                                        <li key={i} className="flex items-center gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
-                                            <img src={b.icon} className="w-8 h-8 rounded bg-slate-800" />
-                                            <div>
-                                                <p className="font-bold text-sm">{b.name}</p>
-                                                <p className="text-xs text-slate-500">{b.category}</p>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-                            <h3 className="font-bold mb-4 flex items-center gap-2">
-                                <LayoutDashboard size={20} className="text-purple-500" />
-                                Bağlı Kanallar ({totalChannels})
-                            </h3>
-                             {totalChannels === 0 ? (
-                                <p className="text-slate-500 text-sm">Henüz kanal bağlantısı yok.</p>
-                            ) : (
-                                <ul className="space-y-2">
-                                    {JSON.parse(localStorage.getItem('userChannels') || '[]').map((c: any, i: number) => (
-                                        <li key={i} className="flex items-center gap-3 p-3 bg-slate-950 rounded-lg border border-slate-800">
-                                            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold">{c.name[0]}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-sm truncate">{c.name}</p>
-                                                <p className="text-xs text-slate-500">{c.memberCount} Üye</p>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                     <h2 className="text-xl font-bold mb-4">Kullanıcı Verileri</h2>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5">
+                             <h3 className="font-bold mb-4 text-slate-400 text-sm uppercase">Satın Alınanlar</h3>
+                             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                                 {JSON.parse(localStorage.getItem('ownedBots') || '[]').map((b: any, i: number) => (
+                                     <div key={i} className="flex items-center gap-3 p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
+                                         <img src={b.icon} className="w-8 h-8 rounded bg-slate-800" />
+                                         <div>
+                                             <p className="font-bold text-xs">{b.name}</p>
+                                             <p className="text-[10px] text-slate-500">{new Date().toLocaleDateString()}</p>
+                                         </div>
+                                     </div>
+                                 ))}
+                                 {totalOwnedBots === 0 && <p className="text-xs text-slate-600">Veri yok.</p>}
+                             </div>
+                         </div>
+                         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5">
+                             <h3 className="font-bold mb-4 text-slate-400 text-sm uppercase">Bağlı Kanallar</h3>
+                             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                                 {JSON.parse(localStorage.getItem('userChannels') || '[]').map((c: any, i: number) => (
+                                     <div key={i} className="flex items-center gap-3 p-2 bg-slate-950/50 rounded-lg border border-slate-800/50">
+                                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold">{c.name[0]}</div>
+                                         <div>
+                                             <p className="font-bold text-xs">{c.name}</p>
+                                             <p className="text-[10px] text-slate-500">{c.memberCount} Üye</p>
+                                         </div>
+                                     </div>
+                                 ))}
+                                 {totalChannels === 0 && <p className="text-xs text-slate-600">Veri yok.</p>}
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+             )}
 
-        {/* Add/Edit Bot Modal */}
+        </main>
+
+        {/* Modal */}
         {showBotModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowBotModal(false)}></div>
-                <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-800 p-6 relative z-10 animate-in zoom-in-95 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+                <div className="bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-800 p-6 relative shadow-2xl max-h-[85vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-white">{editingBotId ? 'Botu Düzenle' : 'Yeni Bot Ekle'}</h3>
+                        <h3 className="text-xl font-bold text-white">{editingBotId ? 'Botu Düzenle' : 'Yeni Bot'}</h3>
                         <button onClick={() => setShowBotModal(false)} className="text-slate-500 hover:text-white"><X size={24} /></button>
                     </div>
-                    
                     <form onSubmit={handleSaveBot} className="space-y-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 block mb-1">Bot Adı</label>
+                            <input type="text" required value={botForm.name} onChange={e => setBotForm({...botForm, name: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-blue-500 outline-none" placeholder="Örn: Super Bot" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 block mb-1">Açıklama</label>
+                            <textarea required value={botForm.description} onChange={e => setBotForm({...botForm, description: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-blue-500 outline-none h-20 resize-none" placeholder="Açıklama..." />
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
-                             <div>
-                                <label className="text-xs font-bold text-slate-400 block mb-1">Bot Adı</label>
-                                <input 
-                                    type="text"
-                                    required
-                                    value={botForm.name}
-                                    onChange={e => setBotForm({...botForm, name: e.target.value})}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                                    placeholder="Örn: Super Bot"
-                                />
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 block mb-1">Fiyat (₺)</label>
+                                <input type="number" min="0" step="0.01" value={botForm.price} onChange={e => setBotForm({...botForm, price: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-blue-500 outline-none" />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-400 block mb-1">Kategori</label>
-                                <select 
-                                    value={botForm.category}
-                                    onChange={e => setBotForm({...botForm, category: e.target.value})}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                                >
-                                    {categories.filter(c => c.id !== 'all').map(c => (
-                                        <option key={c.id} value={c.id}>{c.label}</option>
-                                    ))}
+                                <label className="text-xs font-bold text-slate-500 block mb-1">Kategori</label>
+                                <select value={botForm.category} onChange={e => setBotForm({...botForm, category: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-blue-500 outline-none">
+                                    {categories.filter(c => c.id !== 'all').map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                                 </select>
                             </div>
                         </div>
-                        
                         <div>
-                            <label className="text-xs font-bold text-slate-400 block mb-1">Açıklama</label>
-                            <textarea 
-                                required
-                                value={botForm.description}
-                                onChange={e => setBotForm({...botForm, description: e.target.value})}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 resize-none"
-                                placeholder="Botun özellikleri..."
-                            />
+                            <label className="text-xs font-bold text-slate-500 block mb-1">Görseller (URL, Satır başı)</label>
+                            <textarea value={botForm.screenshots} onChange={e => setBotForm({...botForm, screenshots: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:border-blue-500 outline-none h-20 text-xs" placeholder="https://..." />
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-400 block mb-1">Fiyat (₺)</label>
-                                <input 
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={botForm.price}
-                                    onChange={e => setBotForm({...botForm, price: e.target.value})}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                                    placeholder="0"
-                                />
-                            </div>
-                             <div>
-                                <label className="text-xs font-bold text-slate-400 block mb-1">Durum</label>
-                                <select 
-                                    value={botForm.status}
-                                    onChange={e => setBotForm({...botForm, status: e.target.value as 'active' | 'passive'})}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500"
-                                >
-                                    <option value="active">Aktif (Yayında)</option>
-                                    <option value="passive">Pasif (Gizli)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 block mb-1">İkon URL</label>
-                            <div className="relative">
-                                <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                                <input 
-                                    type="text"
-                                    value={botForm.icon}
-                                    onChange={e => setBotForm({...botForm, icon: e.target.value})}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:border-blue-500 text-sm"
-                                    placeholder="https://... (Boş bırakılırsa otomatik üretilir)"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-xs font-bold text-slate-400 block mb-1">Ekran Görüntüleri (URL)</label>
-                            <textarea 
-                                value={botForm.screenshots}
-                                onChange={e => setBotForm({...botForm, screenshots: e.target.value})}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 h-24 text-sm"
-                                placeholder="Her satıra bir görsel URL'si girin..."
-                            />
-                            <p className="text-[10px] text-slate-500 mt-1">Örn: https://resim.com/1.jpg</p>
-                        </div>
-
-                        <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer" onClick={() => setBotForm({...botForm, isPremium: !botForm.isPremium})}>
+                         <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-slate-800 cursor-pointer" onClick={() => setBotForm({...botForm, isPremium: !botForm.isPremium})}>
                             <div className={`w-5 h-5 rounded border flex items-center justify-center ${botForm.isPremium ? 'bg-blue-600 border-blue-600' : 'border-slate-600'}`}>
                                 {botForm.isPremium && <X size={14} className="text-white" />}
                             </div>
-                            <span className="text-sm font-bold text-slate-300">Premium Bot Olarak İşaretle</span>
+                            <span className="text-sm font-bold text-slate-300">Premium Bot</span>
                         </div>
-
-                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors mt-4 flex items-center justify-center gap-2">
-                            <Save size={18} /> {editingBotId ? 'Değişiklikleri Kaydet' : 'Kaydet ve Yayınla'}
+                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                            <Save size={18} /> Kaydet
                         </button>
                     </form>
                 </div>

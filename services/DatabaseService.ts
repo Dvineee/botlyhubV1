@@ -7,7 +7,7 @@ import { WalletService } from './WalletService';
 export class DatabaseService {
     
     // Uygulama başladığında veritabanını (LocalStorage) kontrol eder ve hazırlar
-    static init() {
+    static async init() {
         console.log("Database Service: Initializing...");
         
         try {
@@ -18,7 +18,8 @@ export class DatabaseService {
             }
 
             // 2. Bot/Marketplace Tablosu Kontrolü
-            const bots = MarketplaceService.getAllBots();
+            // MarketplaceService.getAllBots is async
+            const bots = await MarketplaceService.getAllBots();
             if (!bots || bots.length === 0) {
                 console.log("DB: Marketplace table initialized with defaults.");
             }

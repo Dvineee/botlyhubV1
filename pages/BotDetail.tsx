@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Share2, Bookmark, Send, ImageOff } from 'lucide-react';
+import { ChevronLeft, Share2, Bookmark, Send, ImageOff, Loader2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { UserBot } from '../types';
+import { UserBot, ExtendedBot } from '../types';
 import { useTelegram } from '../hooks/useTelegram';
 import { MarketplaceService } from '../services/MarketplaceService';
 
@@ -11,19 +11,48 @@ const BotDetail = () => {
   const { id } = useParams();
   const { haptic, openLink, notification } = useTelegram();
   const [isOwned, setIsOwned] = useState(false);
+  const [bot, setBot] = useState<ExtendedBot | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Find the bot from the dynamic service
-  const bot = id ? MarketplaceService.getBotById(id) : undefined;
-
-  // Check if bot is already owned
+  // Fetch bot data asynchronously
   useEffect(() => {
-    const ownedBots = JSON.parse(localStorage.getItem('ownedBots') || '[]');
-    const owned = ownedBots.find((b: UserBot) => b.id === id);
-    if (owned) setIsOwned(true);
+    const fetchBotData = async () => {
+        setIsLoading(true);
+        if (id) {
+            try {
+                const fetchedBot = await MarketplaceService.getBotById(id);
+                setBot(fetchedBot);
+
+                // Check ownership (Currently relying on local copy of owned items, ideally should be from backend too)
+                // For simplicity in migration, we keep checking local storage for ownership or fetch user profile
+                const ownedBots = JSON.parse(localStorage.getItem('ownedBots') || '[]');
+                const owned = ownedBots.find((b: UserBot) => b.id === id);
+                if (owned) setIsOwned(true);
+            } catch (error) {
+                console.error("Bot detail fetch error:", error);
+            }
+        }
+        setIsLoading(false);
+    };
+
+    fetchBotData();
   }, [id]);
 
+  if (isLoading) {
+      return (
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </div>
+      );
+  }
+
   if (!bot) {
-      return <div className="p-8 text-center text-slate-500">Bot bulunamadı veya silinmiş.</div>;
+      return (
+        <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-500">
+            <p>Bot bulunamadı veya silinmiş.</p>
+            <button onClick={() => navigate('/')} className="mt-4 text-blue-500 underline">Geri Dön</button>
+        </div>
+      );
   }
 
   const handleAction = () => {
@@ -42,6 +71,7 @@ const BotDetail = () => {
 
       if (bot.price === 0) {
           // Free bot logic: Add directly to library
+          // TODO: This should be an API call to "purchase" the free bot
           const newBot: UserBot = {
               ...bot,
               isAdEnabled: false,

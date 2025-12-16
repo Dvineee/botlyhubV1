@@ -5,12 +5,13 @@ import {
     LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, 
     Search, Trash2, Bot, Info, Plus, X, Save, Image as ImageIcon, 
     Edit, CheckCircle, Ban, ChevronRight, MoreVertical, Download, 
-    PieChart, AlertTriangle, ShieldAlert, Mail 
+    PieChart, AlertTriangle, ShieldAlert, Mail, Loader2
 } from 'lucide-react';
 import { Logger } from '../../services/Logger';
 import { MarketplaceService } from '../../services/MarketplaceService';
 import { UserService } from '../../services/UserService';
 import { AuthService } from '../../services/AuthService';
+import { BackendService } from '../../services/BackendService';
 import { SystemLog, AppStats, UserBot, Channel, ExtendedBot, User } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RePieChart, Pie, Cell } from 'recharts';
 import { categories } from '../../data';
@@ -23,6 +24,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   
   // --- Global State ---
+  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<AppStats | null>(null);
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'logs' | 'users' | 'bots'>('overview');
@@ -73,46 +75,56 @@ const AdminDashboard = () => {
 
   // --- Initialization ---
   useEffect(() => {
-    // Auth Check is now handled by ProtectedRoute
     refreshData();
   }, []);
 
-  const refreshData = () => {
-      // 1. Logs & Stats
-      setStats(Logger.getStats());
-      setLogs(Logger.getLogs());
+  const refreshData = async () => {
+      setIsLoading(true);
+      try {
+          // 1. Logs & Stats (API Calls)
+          const fetchedLogs = await BackendService.getLogs();
+          const fetchedStats = await BackendService.getStats(); // Assuming an endpoint exists
+          
+          setLogs(fetchedLogs);
+          // Fallback stats if endpoint returns incomplete data
+          setStats(fetchedStats || { totalViews: 0, totalUsers: 0, totalRevenue: 0, activeBots: 0 });
 
-      // 2. Marketplace Bots
-      const bots = MarketplaceService.getAllBots();
-      setMarketplaceBots(bots);
+          // 2. Marketplace Bots
+          const bots = await MarketplaceService.getAllBots();
+          setMarketplaceBots(bots);
 
-      // 3. Users
-      setAdminUsers(UserService.getAllUsers());
+          // 3. Users
+          const users = await BackendService.getUsers();
+          setAdminUsers(users);
 
-      // 4. Calculate Real Revenue & Sales (From Owned Bots Storage)
-      const ownedBots: UserBot[] = JSON.parse(localStorage.getItem('ownedBots') || '[]');
-      
-      const revenue = ownedBots.reduce((acc, bot) => acc + (bot.price || 0), 0);
-      const totalSubscriptionsRevenue = 149.90 * 12; // Mock subs calculation for demo
+          // 4. Statistics Calculation
+          // Note: In a real backend, these aggregations should be done by the server, not the client
+          const totalRevenue = bots.reduce((acc, bot) => acc + (bot.price || 0), 0); // Simplified
+          setRealRevenue(totalRevenue);
+          setSoldBotCount(0); // This needs a real sales endpoint
 
-      setSoldBotCount(ownedBots.length);
-      setRealRevenue(revenue + totalSubscriptionsRevenue);
+          // 5. Category Chart Data
+          const catCount = bots.reduce((acc, bot) => {
+              acc[bot.category] = (acc[bot.category] || 0) + 1;
+              return acc;
+          }, {} as Record<string, number>);
+          
+          const chartData = Object.keys(catCount).map(key => ({
+              name: categories.find(c => c.id === key)?.label || key,
+              value: catCount[key]
+          }));
+          setCategoryData(chartData);
 
-      // 5. Category Chart Data
-      const catCount = bots.reduce((acc, bot) => {
-          acc[bot.category] = (acc[bot.category] || 0) + 1;
-          return acc;
-      }, {} as Record<string, number>);
-      
-      const chartData = Object.keys(catCount).map(key => ({
-          name: categories.find(c => c.id === key)?.label || key,
-          value: catCount[key]
-      }));
-      setCategoryData(chartData);
+      } catch (error) {
+          console.error("Dashboard refresh error:", error);
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const clearLogs = () => {
-      Logger.clearLogs();
+      // In real backend, this should call DELETE /api/logs
+      // For now, just clear local view
       setLogs([]);
   };
 
@@ -129,7 +141,7 @@ const AdminDashboard = () => {
   };
 
   // --- Bot Management ---
-  const handleSaveBot = (e: React.FormEvent) => {
+  const handleSaveBot = async (e: React.FormEvent) => {
       e.preventDefault();
       const iconUrl = botForm.icon || `https://ui-avatars.com/api/?name=${encodeURIComponent(botForm.name)}&background=random&size=200`;
       const screenshotList = botForm.screenshots.split(/[\n,]+/).map(s => s.trim()).filter(s => s.length > 0);
@@ -145,23 +157,30 @@ const AdminDashboard = () => {
           screenshots: screenshotList
       };
 
-      if (editingBotId) {
-          MarketplaceService.updateBot(editingBotId, botData);
-          Logger.log('USER_ACTION', `Bot güncellendi: ${botForm.name}`);
-      } else {
-          MarketplaceService.addBot(botData);
-          Logger.log('USER_ACTION', `Yeni bot eklendi: ${botForm.name}`);
+      try {
+        if (editingBotId) {
+            await MarketplaceService.updateBot(editingBotId, botData);
+            Logger.log('USER_ACTION', `Bot güncellendi: ${botForm.name}`);
+        } else {
+            await MarketplaceService.addBot(botData);
+            Logger.log('USER_ACTION', `Yeni bot eklendi: ${botForm.name}`);
+        }
+        await refreshData();
+        setShowBotModal(false);
+      } catch(e) {
+          alert("Bot kaydedilemedi. Sunucu hatası.");
       }
-
-      refreshData();
-      setShowBotModal(false);
   };
 
-  const handleDeleteBot = (id: string) => {
+  const handleDeleteBot = async (id: string) => {
       if(window.confirm('Bu botu silmek istediğinize emin misiniz?')) {
-          MarketplaceService.deleteBot(id);
-          refreshData();
-          Logger.log('USER_ACTION', `Bot silindi (ID: ${id})`);
+          try {
+              await MarketplaceService.deleteBot(id);
+              await refreshData();
+              Logger.log('USER_ACTION', `Bot silindi (ID: ${id})`);
+          } catch(e) {
+              alert("Silme işlemi başarısız.");
+          }
       }
   };
 
@@ -188,18 +207,26 @@ const openEditModal = (bot: ExtendedBot) => {
 
 
   // --- User Management ---
-  const handleToggleUserStatus = (user: User) => {
+  const handleToggleUserStatus = async (user: User) => {
       const newStatus = user.status === 'Active' ? 'Passive' : 'Active';
-      UserService.updateUser(user.id, { status: newStatus });
-      refreshData();
-      Logger.log('USER_ACTION', `Kullanıcı durumu değiştirildi: ${user.username} -> ${newStatus}`);
+      try {
+          await BackendService.updateUser(user.id, { status: newStatus });
+          await refreshData();
+          Logger.log('USER_ACTION', `Kullanıcı durumu değiştirildi: ${user.username} -> ${newStatus}`);
+      } catch (e) {
+          alert("Kullanıcı güncellenemedi.");
+      }
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
       if(window.confirm('Kullanıcıyı silmek veri kaybına yol açabilir. Emin misiniz?')) {
-          UserService.deleteUser(id);
-          refreshData();
-          Logger.log('WARNING', `Kullanıcı silindi ID: ${id}`);
+          try {
+             await BackendService.deleteUser(id);
+             await refreshData();
+             Logger.log('WARNING', `Kullanıcı silindi ID: ${id}`);
+          } catch (e) {
+              alert("Silme başarısız.");
+          }
       }
   };
 
@@ -210,7 +237,7 @@ const openEditModal = (bot: ExtendedBot) => {
   // --- Graph Data ---
   const getGraphData = () => {
      if (!stats) return [];
-     const base = stats.totalViews;
+     const base = stats.totalViews || 100;
      return [
         { name: 'Pzt', view: Math.floor(base * 0.85) },
         { name: 'Sal', view: Math.floor(base * 0.90) },
@@ -222,7 +249,8 @@ const openEditModal = (bot: ExtendedBot) => {
      ];
   };
 
-  if (!stats) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Yükleniyor...</div>;
+  if (isLoading) return <div className="min-h-screen bg-slate-950 flex flex-col gap-2 items-center justify-center text-white"><Loader2 className="animate-spin" /> Veriler Yükleniyor...</div>;
+  if (!stats) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white">Veri alınamadı. Backend bağlantısını kontrol edin.</div>;
 
   // --- Sub-Components ---
   const StatCard = ({ title, value, icon: Icon, color, subValue }: any) => (
@@ -491,7 +519,7 @@ const openEditModal = (bot: ExtendedBot) => {
                  </div>
             )}
 
-            {/* USERS TAB (NEW) */}
+            {/* USERS TAB */}
             {activeTab === 'users' && (
                 <div className="animate-in fade-in">
                     <div className="flex justify-between items-center mb-6">

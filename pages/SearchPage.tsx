@@ -25,7 +25,16 @@ const SearchPage = () => {
   useEffect(() => {
       setQuery(searchParams.get('q') || '');
       setActiveCategory(searchParams.get('category') || 'all');
-      setMarketplaceBots(MarketplaceService.getAllBots());
+      
+      const fetchBots = async () => {
+          try {
+              const bots = await MarketplaceService.getAllBots();
+              setMarketplaceBots(bots);
+          } catch (e) {
+              console.error("Failed to load bots", e);
+          }
+      };
+      fetchBots();
   }, [searchParams]);
 
   const handleSearchChange = (val: string) => {

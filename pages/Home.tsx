@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Sparkles, TrendingUp, BarChart3, ChevronRight, LayoutGrid, Store, User, Bot as BotIcon, Megaphone, DollarSign, X, ShieldCheck } from 'lucide-react';
+import { Search, Sparkles, TrendingUp, BarChart3, ChevronRight, LayoutGrid, Store, User, Bot as BotIcon, Megaphone, DollarSign, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ExtendedBot } from '../types';
 import { categories } from '../data';
@@ -52,6 +52,7 @@ const Home = () => {
   const { t } = useTranslation();
   const { user } = useTelegram();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Data State
   const [marketplaceBots, setMarketplaceBots] = useState<ExtendedBot[]>([]);
@@ -62,11 +63,21 @@ const Home = () => {
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
 
   useEffect(() => {
-    // Load bots from service (LocalStorage)
-    // ONLY Show active bots to regular users
-    const allBots = MarketplaceService.getAllBots();
-    const activeBots = allBots.filter(b => (b.status || 'active') === 'active');
-    setMarketplaceBots(activeBots);
+    // Load bots from Real Backend
+    const fetchBots = async () => {
+        setIsLoading(true);
+        try {
+            const allBots = await MarketplaceService.getAllBots();
+            const activeBots = allBots.filter(b => (b.status || 'active') === 'active');
+            setMarketplaceBots(activeBots);
+        } catch (e) {
+            console.error("Botlar yüklenirken hata:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    fetchBots();
   }, []);
 
   // Search is active if text exists OR overlay is explicitly opened (e.g. by category click)
@@ -350,18 +361,12 @@ const Home = () => {
                         <stop offset="1" stopColor="#a855f7" /> {/* Purple */}
                     </linearGradient>
                 </defs>
-                
-                {/* Hub Dots */}
                 <circle cx="8" cy="8" r="3" fill="url(#hub_gradient)" opacity="0.6" />
                 <circle cx="32" cy="8" r="3" fill="url(#hub_gradient)" opacity="0.6" />
                 <circle cx="8" cy="32" r="3" fill="url(#hub_gradient)" opacity="0.6" />
                 <circle cx="32" cy="32" r="3" fill="url(#hub_gradient)" opacity="0.6" />
-                
-                {/* Main Eye */}
                 <circle cx="20" cy="20" r="10" fill="url(#hub_gradient)" />
                 <circle cx="20" cy="20" r="4" fill="white" />
-                
-                {/* Text */}
                 <text x="46" y="27" fontFamily="'Inter', sans-serif" fontWeight="700" fontSize="20" className="fill-white" letterSpacing="-0.5">BotlyHub V2</text>
             </svg>
         </div>
@@ -430,7 +435,12 @@ const Home = () => {
       </div>
 
       {/* Conditional Rendering */}
-      {isSearchActive ? renderSearchResults() : renderDashboard()}
+      {isLoading ? (
+          <div className="flex flex-col items-center justify-center min-h-[50vh]">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <p className="text-xs text-slate-500 mt-2">Sunucuya bağlanılıyor...</p>
+          </div>
+      ) : isSearchActive ? renderSearchResults() : renderDashboard()}
 
     </div>
   );

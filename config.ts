@@ -1,16 +1,16 @@
 
 // Bu dosya uygulamanın genel yapılandırma ayarlarını içerir.
-// Gerçek bir backend bağlantısı kurulduğunda API_URL buraya girilir.
 
 export const CONFIG = {
-    // Admin yetkisine sahip Telegram ID'leri
+    // Backend API Adresi (Sunucunuzun adresi)
+    API_BASE_URL: 'http://localhost:5000/api',
+    
+    // Admin yetkisine sahip Telegram ID'leri (Frontend tarafında ön kontrol için)
+    // Asıl yetkilendirme Backend tarafında yapılmalıdır.
     ADMIN_IDS: [8426134237],
     
-    // Simüle edilmiş API Gecikmesi (ms cinsinden - Gerçekçilik için)
-    API_LATENCY: 600,
-    
     // Versiyon
-    VERSION: '2.1.0-Stable'
+    VERSION: '3.0.0-Live'
 };
 
 export const isUserAdmin = (telegramId?: number): boolean => {

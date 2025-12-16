@@ -1,106 +1,114 @@
 
 import { CONFIG } from '../config';
 import { User, ExtendedBot, SystemLog } from '../types';
-import { mockBots } from '../data';
 
-// Database Schema Simulation
-interface DatabaseSchema {
-    users: User[];
-    bots: ExtendedBot[];
-    logs: SystemLog[];
-    stats: any;
+// Gerçek HTTP İstekleri için Yardımcı Metot
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+    
+    // Auth Token Ekleme
+    const token = sessionStorage.getItem('auth_token');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers,
+    };
+
+    try {
+        const response = await fetch(url, { ...options, headers });
+        
+        if (!response.ok) {
+            const errorBody = await response.json().catch(() => ({}));
+            throw new Error(errorBody.message || `API Hatası: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error(`API Request Failed [${endpoint}]:`, error);
+        throw error;
+    }
 }
-
-const DB_KEY = 'botly_production_db_v1';
 
 export class BackendService {
     
-    // --- Private Database Connection Helper ---
-    private static async getDB(): Promise<DatabaseSchema> {
-        // Network gecikmesi simülasyonu (Gerçek API hissi verir)
-        await new Promise(resolve => setTimeout(resolve, CONFIG.API_LATENCY));
-
-        const data = localStorage.getItem(DB_KEY);
-        if (data) {
-            return JSON.parse(data);
-        }
-
-        // Eğer DB yoksa initialize et (Seed Data)
-        const initialDB: DatabaseSchema = {
-            users: [],
-            bots: mockBots.map(b => ({ ...b, status: 'active', screenshots: [] })),
-            logs: [],
-            stats: { totalViews: 0, totalRevenue: 0 }
-        };
-        localStorage.setItem(DB_KEY, JSON.stringify(initialDB));
-        return initialDB;
+    // --- AUTH API ---
+    static async loginTelegram(initData: string): Promise<{ token: string, user: User }> {
+        return request('/auth/telegram', {
+            method: 'POST',
+            body: JSON.stringify({ initData })
+        });
     }
 
-    private static async saveDB(db: DatabaseSchema): Promise<void> {
-        // Yazma işlemi gecikmesi
-        await new Promise(resolve => setTimeout(resolve, 200)); 
-        localStorage.setItem(DB_KEY, JSON.stringify(db));
+    static async loginAdmin(username: string, password: string): Promise<{ token: string, user: User }> {
+        return request('/auth/admin-login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password })
+        });
     }
 
-    // --- USER API ENDPOINTS ---
-
+    // --- USER API ---
     static async getUsers(): Promise<User[]> {
-        const db = await this.getDB();
-        return db.users;
+        return request<User[]>('/users');
     }
 
-    static async getUserById(id: string): Promise<User | undefined> {
-        const db = await this.getDB();
-        return db.users.find(u => u.id === id);
+    static async getUserById(id: string): Promise<User> {
+        return request<User>(`/users/${id}`);
     }
 
-    // --- BOT API ENDPOINTS ---
+    static async updateUser(id: string, data: Partial<User>): Promise<User> {
+        return request<User>(`/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    }
 
+    static async deleteUser(id: string): Promise<void> {
+        return request<void>(`/users/${id}`, { method: 'DELETE' });
+    }
+
+    // --- BOT API ---
     static async getBots(): Promise<ExtendedBot[]> {
-        const db = await this.getDB();
-        return db.bots;
+        return request<ExtendedBot[]>('/bots');
     }
 
-    static async createBot(bot: ExtendedBot): Promise<ExtendedBot> {
-        const db = await this.getDB();
-        db.bots.unshift(bot);
-        await this.saveDB(db);
-        return bot;
+    static async getBotById(id: string): Promise<ExtendedBot> {
+        return request<ExtendedBot>(`/bots/${id}`);
     }
 
-    static async updateBot(id: string, updates: Partial<ExtendedBot>): Promise<ExtendedBot | null> {
-        const db = await this.getDB();
-        const index = db.bots.findIndex(b => b.id === id);
-        if (index === -1) return null;
-        
-        db.bots[index] = { ...db.bots[index], ...updates };
-        await this.saveDB(db);
-        return db.bots[index];
+    static async createBot(bot: Partial<ExtendedBot>): Promise<ExtendedBot> {
+        return request<ExtendedBot>('/bots', {
+            method: 'POST',
+            body: JSON.stringify(bot)
+        });
     }
 
-    static async deleteBot(id: string): Promise<boolean> {
-        const db = await this.getDB();
-        const initialLength = db.bots.length;
-        db.bots = db.bots.filter(b => b.id !== id);
-        
-        if (db.bots.length !== initialLength) {
-            await this.saveDB(db);
-            return true;
-        }
-        return false;
+    static async updateBot(id: string, updates: Partial<ExtendedBot>): Promise<ExtendedBot> {
+        return request<ExtendedBot>(`/bots/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(updates)
+        });
     }
 
-    // --- LOGGING API ---
-    
-    static async createLog(log: SystemLog): Promise<void> {
-        const db = await this.getDB();
-        db.logs.unshift(log);
-        if (db.logs.length > 500) db.logs.pop(); // Rotate logs
-        await this.saveDB(db);
+    static async deleteBot(id: string): Promise<void> {
+        return request<void>(`/bots/${id}`, { method: 'DELETE' });
     }
 
+    // --- LOGS & STATS API ---
     static async getLogs(): Promise<SystemLog[]> {
-        const db = await this.getDB();
-        return db.logs;
+        return request<SystemLog[]>('/logs');
+    }
+
+    static async getStats(): Promise<any> {
+        return request<any>('/stats/dashboard');
+    }
+
+    // --- HEALTH CHECK ---
+    static async checkHealth(): Promise<boolean> {
+        try {
+            await fetch(`${CONFIG.API_BASE_URL}/health`);
+            return true;
+        } catch {
+            return false;
+        }
     }
 }

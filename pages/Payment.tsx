@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Star, Wallet, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { subscriptionPlans } from '../data';
-import { UserBot } from '../types';
+import { UserBot, ExtendedBot } from '../types';
 import { WalletService } from '../services/WalletService';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { Logger } from '../services/Logger';
@@ -15,13 +15,36 @@ const Payment = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
+  // State for fetching bot details if ID is a bot ID
+  const [bot, setBot] = useState<ExtendedBot | undefined>(undefined);
+  const [isFetchingBot, setIsFetchingBot] = useState(false);
+
   // TON Connect Hook for real crypto payments
   const [tonConnectUI] = useTonConnectUI();
 
   // Identify Item (Bot or Plan)
-  const bot = id ? MarketplaceService.getBotById(id) : undefined;
+  // First check if ID matches a subscription plan (synchronous)
   const plan = subscriptionPlans.find(p => p.id === id);
-  const item = bot || plan;
+
+  useEffect(() => {
+      const fetchBotData = async () => {
+          if (id && !plan) {
+              setIsFetchingBot(true);
+              try {
+                  const fetchedBot = await MarketplaceService.getBotById(id);
+                  setBot(fetchedBot);
+              } catch (error) {
+                  console.error("Payment: Bot fetch error", error);
+              } finally {
+                  setIsFetchingBot(false);
+              }
+          }
+      };
+      
+      fetchBotData();
+  }, [id, plan]);
+
+  const item = plan || bot;
 
   // Prices
   const priceTRY = item ? item.price : 0;
@@ -144,7 +167,15 @@ const Payment = () => {
   };
 
 
-  if (!item) return <div className="text-white p-4">Ürün bulunamadı.</div>;
+  if (isFetchingBot) {
+      return (
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+          </div>
+      );
+  }
+
+  if (!item) return <div className="min-h-screen bg-slate-950 text-white p-4 flex items-center justify-center">Ürün bulunamadı.</div>;
 
   return (
     <div className="min-h-screen bg-slate-950 p-4 pt-8 pb-12 relative">

@@ -8,6 +8,7 @@ export interface User {
   status: 'Active' | 'Passive';
   badges: string[];
   joinDate: string;
+  email?: string; // Admin view only
   isRestricted?: boolean;
   canPublishAds?: boolean;
 }

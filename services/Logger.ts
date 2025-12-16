@@ -54,7 +54,7 @@ export class Logger {
         return JSON.parse(localStorage.getItem(STATS_KEY) || JSON.stringify(defaultStats));
     }
 
-    private static saveStats(stats: AppStats) {
+    public static saveStats(stats: AppStats) {
         localStorage.setItem(STATS_KEY, JSON.stringify(stats));
     }
 }

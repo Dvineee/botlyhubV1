@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, Activity, LogOut, Terminal, Search, Trash2, Bot, Info } from 'lucide-react';
 import { Logger } from '../../services/Logger';
 import { SystemLog, AppStats, UserBot, Channel } from '../../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -24,7 +24,7 @@ const AdminDashboard = () => {
         return;
     }
 
-    // Load Data
+    // Load Initial Data
     const s = Logger.getStats();
     setStats(s);
     setLogs(Logger.getLogs());
@@ -38,6 +38,29 @@ const AdminDashboard = () => {
 
   }, [navigate]);
 
+  // --- Live Simulation Effect ---
+  // Dashboard açıkken gerçek zamanlı veri akışı simülasyonu yapar
+  useEffect(() => {
+      if (!stats) return;
+
+      const interval = setInterval(() => {
+          // %30 ihtimalle yeni görüntülenme ekle
+          if (Math.random() > 0.7) {
+              setStats(prev => {
+                  if (!prev) return null;
+                  const newStats = { 
+                      ...prev, 
+                      totalViews: prev.totalViews + Math.floor(Math.random() * 3) + 1 
+                  };
+                  Logger.saveStats(newStats); // Veriyi kaydet
+                  return newStats;
+              });
+          }
+      }, 2000);
+
+      return () => clearInterval(interval);
+  }, []);
+
   const handleLogout = () => {
       sessionStorage.removeItem('isAdminAuthenticated');
       navigate('/admin/login');
@@ -48,16 +71,20 @@ const AdminDashboard = () => {
       setLogs([]);
   };
 
-  // Mock Graph Data based on views
-  const graphData = [
-      { name: 'Pzt', view: stats ? Math.floor(stats.totalViews * 0.1) : 0 },
-      { name: 'Sal', view: stats ? Math.floor(stats.totalViews * 0.2) : 0 },
-      { name: 'Çar', view: stats ? Math.floor(stats.totalViews * 0.15) : 0 },
-      { name: 'Per', view: stats ? Math.floor(stats.totalViews * 0.3) : 0 },
-      { name: 'Cum', view: stats ? Math.floor(stats.totalViews * 0.4) : 0 },
-      { name: 'Cmt', view: stats ? Math.floor(stats.totalViews * 0.6) : 0 },
-      { name: 'Paz', view: stats?.totalViews || 0 },
-  ];
+  // Mock Graph Data based on views (Dynamic)
+  const getGraphData = () => {
+     if (!stats) return [];
+     const base = stats.totalViews;
+     return [
+        { name: 'Pzt', view: Math.floor(base * 0.85) },
+        { name: 'Sal', view: Math.floor(base * 0.90) },
+        { name: 'Çar', view: Math.floor(base * 0.88) },
+        { name: 'Per', view: Math.floor(base * 0.95) },
+        { name: 'Cum', view: Math.floor(base * 0.92) },
+        { name: 'Cmt', view: Math.floor(base * 0.98) },
+        { name: 'Paz', view: base },
+     ];
+  };
 
   if (!stats) return <div className="p-8 text-white">Yükleniyor...</div>;
 
@@ -102,17 +129,25 @@ const AdminDashboard = () => {
             
             {activeTab === 'overview' && (
                 <div className="animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex items-center gap-2 mb-6 bg-blue-900/20 border border-blue-900/50 p-3 rounded-lg">
+                        <Info className="text-blue-400" size={20} />
+                        <p className="text-sm text-blue-200">
+                            <strong>Demo Modu:</strong> Şu anda görüntülenen veriler simülasyon amaçlıdır ve tarayıcınızda (Local Storage) saklanmaktadır.
+                        </p>
+                    </div>
+
                     <h2 className="text-2xl font-bold mb-6">Genel Durum</h2>
                     
                     {/* Stat Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                            <div className="flex justify-between items-start mb-4">
+                        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity"><Activity size={64} /></div>
+                            <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div className="p-3 bg-blue-500/20 text-blue-500 rounded-xl"><Activity size={24} /></div>
-                                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+12%</span>
+                                <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded animate-pulse">CANLI</span>
                             </div>
                             <p className="text-slate-500 text-sm">Toplam Görüntülenme</p>
-                            <h3 className="text-3xl font-bold mt-1">{stats.totalViews}</h3>
+                            <h3 className="text-3xl font-bold mt-1 tabular-nums">{stats.totalViews}</h3>
                         </div>
                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                              <div className="flex justify-between items-start mb-4">
@@ -126,7 +161,7 @@ const AdminDashboard = () => {
                                 <div className="p-3 bg-emerald-500/20 text-emerald-500 rounded-xl"><DollarSign size={24} /></div>
                             </div>
                             <p className="text-slate-500 text-sm">Toplam Hasılat</p>
-                            <h3 className="text-3xl font-bold mt-1">₺{stats.totalRevenue}</h3>
+                            <h3 className="text-3xl font-bold mt-1 tabular-nums">₺{stats.totalRevenue.toFixed(2)}</h3>
                         </div>
                         <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                              <div className="flex justify-between items-start mb-4">
@@ -140,10 +175,10 @@ const AdminDashboard = () => {
                     {/* Charts Area */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                            <h3 className="font-bold mb-6">Trafik Analizi</h3>
+                            <h3 className="font-bold mb-6">Trafik Analizi (Son 7 Gün)</h3>
                             <div className="h-[300px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={graphData}>
+                                    <AreaChart data={getGraphData()}>
                                         <defs>
                                             <linearGradient id="colorView" x1="0" y1="0" x2="0" y2="1">
                                                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -157,7 +192,7 @@ const AdminDashboard = () => {
                                             contentStyle={{backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#fff'}}
                                             itemStyle={{color: '#3b82f6'}}
                                         />
-                                        <Area type="monotone" dataKey="view" stroke="#3b82f6" fillOpacity={1} fill="url(#colorView)" />
+                                        <Area type="monotone" dataKey="view" stroke="#3b82f6" fillOpacity={1} fill="url(#colorView)" animationDuration={1000} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -181,7 +216,7 @@ const AdminDashboard = () => {
                                 <div className="mt-8 pt-4 border-t border-slate-800">
                                     <p className="text-xs text-slate-500 mb-2">Sunucu Durumu</p>
                                     <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                                        <div className="w-[98%] h-full bg-emerald-500 rounded-full"></div>
+                                        <div className="w-[98%] h-full bg-emerald-500 rounded-full animate-pulse"></div>
                                     </div>
                                     <div className="flex justify-between mt-1">
                                         <span className="text-[10px] text-emerald-500">Online</span>
